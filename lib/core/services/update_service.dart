@@ -180,7 +180,7 @@ class UpdateInfo {
     required this.currentVersion,
     required this.latestVersion,
     this.apkUrl,
-    this.notes,
+    this.notes = '',
     this.sizeBytes,
     this.releaseUrl,
   });
@@ -196,8 +196,9 @@ class UpdateInfo {
   bool get downloadable => apkUrl != null && apkUrl!.isNotEmpty;
 
   String get sizeLabel {
-    if (sizeBytes == null || sizeBytes <= 0) return '';
-    final double mb = sizeBytes! / (1024 * 1024);
+    final int? s = sizeBytes;
+    if (s == null || s <= 0) return '';
+    final double mb = s / (1024 * 1024);
     return '${mb.toStringAsFixed(1)} MB';
   }
 }
