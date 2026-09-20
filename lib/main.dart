@@ -99,7 +99,13 @@ class _MusicHomePageState extends State<MusicHomePage> {
         ],
       );
 
-      final AudioOnlyStreamInfo streamInfo = manifest.audioOnly.withHigestBitrate();
+      // Pick the highest-bitrate audio-only stream. We sort manually instead of
+      // relying on package helpers (the API uses the typo'd name "withHigestBitrate"
+      // in some versions which can trip up static analysis on version bumps).
+      final List<AudioOnlyStreamInfo> audioStreams =
+          manifest.audioOnly.toList()
+            ..sort((a, b) => b.bitrate.compareTo(a.bitrate));
+      final AudioOnlyStreamInfo streamInfo = audioStreams.first;
       final String audioStreamUrl = streamInfo.url.toString();
 
       debugPrint('Playing: ${video.title}');
