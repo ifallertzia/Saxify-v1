@@ -15,16 +15,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # JDK 21 required by AGP 9.x / Gradle 9.x used in this project's template
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
+      # Latest stable Flutter — matches the project's Android template
+      # (AGP 9.1.0, Gradle 9.3.1, Kotlin 2.4.0 require a recent Flutter)
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.x'
           channel: 'stable'
           cache: true
 
