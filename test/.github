@@ -1,0 +1,7 @@
+TRY1/
+ ├── .github/
+ │    └── workflows/
+ │         └── build_apk.yml
+ ├── android/
+ ├── lib/
+ └── pubspec.yaml
