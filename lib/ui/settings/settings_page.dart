@@ -15,6 +15,7 @@ import '../../core/utils/format.dart';
 import '../widgets/neon.dart';
 import '../widgets/sidify_logo.dart';
 import 'background_guide_sheet.dart';
+import 'update_dialog.dart';
 
 /// Settings — the same panels the web app shows.
 class SettingsPage extends StatelessWidget {
@@ -206,6 +207,14 @@ class SettingsPage extends StatelessWidget {
                 const _PanelHeader(
                   title: 'About & Support',
                   subtitle: 'Version info, legal and help',
+                ),
+                _SettingTile(
+                  icon: Icons.system_update_rounded,
+                  title: 'Check for updates',
+                  subtitle: 'Silent in-app updates from GitHub Releases',
+                  trailing: const Icon(Icons.chevron_right_rounded,
+                      color: SidifyColors.textFaint),
+                  onTap: () => checkAndPromptUpdate(context, silent: false),
                 ),
                 const _AboutCard(),
               ]),

@@ -7,6 +7,7 @@ import '../home/home_page.dart';
 import '../library/library_page.dart';
 import '../search/search_page.dart';
 import '../settings/settings_page.dart';
+import '../settings/update_dialog.dart';
 import 'mini_player.dart';
 import 'shell_controller.dart';
 
@@ -29,6 +30,13 @@ class _SidifyShellState extends State<SidifyShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<PlaybackService>().addListener(_onPlaybackChanged);
+    });
+
+    // Phase 2: once the UI is up, quietly check GitHub Releases. Only shows a
+    // dialog when a newer version actually exists.
+    Future<void>.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      checkAndPromptUpdate(context, silent: true);
     });
   }
 
