@@ -89,22 +89,25 @@ class _MusicHomePageState extends State<MusicHomePage> {
       await _audioPlayer.stop();
 
       // Use YouTube clients that are NOT affected by the Android PO-Token /
-      // anti-bot changes (iOS + Safari + AndroidVr all work without PO tokens
-      // and return audio-only streams that resolve without HTTP 403).
+      // anti-bot changes (ios + androidVr return audio-only streams that
+      // resolve without HTTP 403).
+      // NOTE: no `const` here — YoutubeApiClient.ios is `static final`, so a
+      // const list would be a compile-time error.
       final StreamManifest manifest = await _yt.videos.streams.getManifest(
         video.id,
-        ytClients: const [
+        ytClients: [
           YoutubeApiClient.ios,
           YoutubeApiClient.androidVr,
         ],
       );
 
-      // Pick the highest-bitrate audio-only stream. We sort manually instead of
-      // relying on package helpers (the API uses the typo'd name "withHigestBitrate"
-      // in some versions which can trip up static analysis on version bumps).
+      // Pick the highest-bitrate audio-only stream.
       final List<AudioOnlyStreamInfo> audioStreams =
           manifest.audioOnly.toList()
             ..sort((a, b) => b.bitrate.compareTo(a.bitrate));
+      if (audioStreams.isEmpty) {
+        throw Exception('No audio-only streams available for this video');
+      }
       final AudioOnlyStreamInfo streamInfo = audioStreams.first;
       final String audioStreamUrl = streamInfo.url.toString();
 
