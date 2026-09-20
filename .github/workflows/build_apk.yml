@@ -2,7 +2,7 @@ name: Build Flutter APK
 
 on:
   push:
-    branches: [ main, master, arena/01a0be80-sidify-app ]
+    branches: [ main, master, arena/01a0bf2d-testing ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -39,7 +39,8 @@ jobs:
         run: flutter pub get
 
       - name: Analyze (errors only, infos non-fatal)
-        run: flutter analyze --no-fatal-infos
+        shell: bash
+        run: set -o pipefail && flutter analyze --no-fatal-infos 2>&1 | tee analyze.log
 
       - name: Build APK (release)
         shell: bash
@@ -82,7 +83,11 @@ jobs:
             echo "**❌ Build failed on commit \`${GITHUB_SHA::7}\`**"
             echo ''
             echo '```text'
-            tail -120 build.log 2>/dev/null || echo "build.log missing"
+            tail -80 analyze.log 2>/dev/null || echo "analyze.log missing"
+            echo '```'
+            echo ''
+            echo '```text'
+            tail -80 build.log 2>/dev/null || echo "build.log missing"
             echo '```'
           } > comment.md
           jq -Rs '{body: .}' < comment.md > payload.json

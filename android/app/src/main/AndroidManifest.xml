@@ -2,8 +2,19 @@
     <!-- INTERNET required for YouTube API calls and audio streaming in release builds -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Phase 2: in-app update — needed to install the downloaded APK -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
+    <!-- Let the app resolve the system package installer on Android 11+ -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="application/vnd.android.package-archive"/>
+        </intent>
+    </queries>
+
     <application
-        android:label="hamster_beats"
+        android:label="Sidify"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">

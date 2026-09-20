@@ -1,452 +1,108 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const HamsterBeatsApp());
+import 'core/services/home_catalog.dart';
+import 'core/services/library_service.dart';
+import 'core/services/playback_service.dart';
+import 'core/services/settings_service.dart';
+import 'core/services/youtube_service.dart';
+import 'core/theme/sidify_theme.dart';
+import 'core/theme/theme_controller.dart';
+import 'ui/shell/shell_controller.dart';
+import 'ui/shell/sidify_shell.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: SidifyColors.surface,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
+
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  final SettingsService settings = SettingsService(prefs);
+  final LibraryService library = LibraryService(prefs);
+  final YoutubeService youtube = YoutubeService();
+  final PlaybackService playback = PlaybackService(
+    youtube: youtube,
+    settings: settings,
+    library: library,
+  );
+
+  runApp(
+    SidifyApp(
+      settings: settings,
+      library: library,
+      youtube: youtube,
+      playback: playback,
+    ),
+  );
 }
 
-class HamsterBeatsApp extends StatelessWidget {
-  const HamsterBeatsApp({super.key});
+/// Sidify — Stream beyond limits.
+class SidifyApp extends StatelessWidget {
+  const SidifyApp({
+    super.key,
+    required this.settings,
+    required this.library,
+    required this.youtube,
+    required this.playback,
+  });
+
+  final SettingsService settings;
+  final LibraryService library;
+  final YoutubeService youtube;
+  final PlaybackService playback;
 
   @override
   Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<SettingsService>.value(value: settings),
+        ChangeNotifierProvider<LibraryService>.value(value: library),
+        Provider<YoutubeService>.value(value: youtube),
+        ChangeNotifierProvider<PlaybackService>.value(value: playback),
+        ChangeNotifierProvider<ThemeController>(
+          create: (_) => ThemeController(settings),
+        ),
+        ChangeNotifierProvider<HomeCatalog>(
+          create: (_) => HomeCatalog(youtube: youtube, library: library),
+        ),
+        ChangeNotifierProvider<ShellController>(
+          create: (_) => ShellController(),
+        ),
+      ],
+      child: const _SidifyRoot(),
+    );
+  }
+}
+
+class _SidifyRoot extends StatelessWidget {
+  const _SidifyRoot();
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeController theme = context.watch<ThemeController>();
+
     return MaterialApp(
-      title: 'Hamster Beats',
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        primaryColor: Colors.deepOrange,
-      ),
-      home: const MusicHomePage(),
+      title: 'Sidify',
       debugShowCheckedModeBanner: false,
-    );
-  }
-}
-
-class MusicHomePage extends StatefulWidget {
-  const MusicHomePage({super.key});
-
-  @override
-  State<MusicHomePage> createState() => _MusicHomePageState();
-}
-
-class _MusicHomePageState extends State<MusicHomePage> {
-  final TextEditingController _searchController = TextEditingController();
-  final YoutubeExplode _yt = YoutubeExplode();
-  final AudioPlayer _audioPlayer = AudioPlayer();
-
-  List<Video> _searchResults = [];
-  bool _isLoading = false;
-  bool _isSongLoading = false;
-  Video? _currentVideo;
-  bool _isPlaying = false;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Keep play/pause icon in sync with real player state.
-    _audioPlayer.playerStateStream.listen((state) {
-      if (!mounted) return;
-      setState(() {
-        _isPlaying = state.playing &&
-            state.processingState != ProcessingState.completed;
-      });
-    });
-  }
-
-  Future<void> _searchSongs(String query) async {
-    if (query.trim().isEmpty) return;
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      final VideoSearchList results = await _yt.search.search(query);
-      if (!mounted) return;
-      setState(() {
-        _searchResults = results.toList();
-        _isLoading = false;
-      });
-    } catch (e, stackTrace) {
-      debugPrint('Search error: $e\n$stackTrace');
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorSnackBar('Search failed: $e');
-    }
-  }
-
-  Future<void> _playSong(Video video) async {
-    if (_isSongLoading) return; // prevent double-tap race
-    setState(() {
-      _isSongLoading = true;
-      _currentVideo = video; // show mini-player immediately for responsive UI
-    });
-
-    try {
-      // Stop any currently playing track before starting a new one.
-      await _audioPlayer.stop();
-
-      final String audioStreamUrl =
-          await _resolvePlayableStreamUrl(video.id);
-
-      debugPrint('Playing: ${video.title}');
-
-      // Load the stream URL into just_audio.
-      await _audioPlayer.setUrl(audioStreamUrl);
-      await _audioPlayer.play();
-
-      if (!mounted) return;
-      setState(() {
-        _currentVideo = video;
-        _isPlaying = true;
-      });
-    } catch (e, stackTrace) {
-      // ---- NO MORE SILENT FAILURE ----
-      // Log to console so developers can diagnose in `flutter logs`.
-      debugPrint('Playback error: $e\n$stackTrace');
-
-      if (!mounted) return;
-      setState(() {
-        // If we failed, don't leave the broken track in the mini-player.
-        _isPlaying = false;
-      });
-      _showErrorSnackBar('Unable to play "${video.title}": $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSongLoading = false;
-        });
-      }
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Stream resolution with playback pre-validation.
-  //
-  // Under YouTube's 2026 anti-bot rules, getManifest() still succeeds but some
-  // of the returned stream URLs (usually the highest-bitrate ones) return
-  // HTTP 403 the moment the player fetches them — the player then fails with
-  // "(0) source error" (youtube_explode_dart issue #332).
-  //
-  // Strategy:
-  //  1. Ask each client (highest success rate first) for a manifest.
-  //  2. Sort audio-only streams by bitrate (desc) and HEAD-probe each URL;
-  //     use the first one that actually responds 200/206.
-  //  3. If no audio-only stream is playable, try muxed (A/V) streams — they
-  //     still play fine as audio.
-  //  4. If a whole client yields nothing usable, fall through to the next.
-  // ---------------------------------------------------------------------------
-  static final List<(String, YoutubeApiClient)> _streamClients =
-      <(String, YoutubeApiClient)>[
-    ('androidSdkless', YoutubeApiClient.androidSdkless), // v3 default, no PO-token
-    ('ios', YoutubeApiClient.ios), // no PO-token, no deciphering
-    ('androidVr', YoutubeApiClient.androidVr), // no PO-token
-  ];
-
-  Future<String> _resolvePlayableStreamUrl(VideoId videoId) async {
-    Object? lastError;
-
-    for (final (String name, YoutubeApiClient client) in _streamClients) {
-      try {
-        final StreamManifest manifest =
-            await _yt.videos.streams.getManifest(videoId, ytClients: [client]);
-
-        final StreamInfo? playable =
-            await _firstPlayable(_sortByBitrateDesc(manifest.audioOnly)) ??
-                await _firstPlayable(_sortByBitrateDesc(manifest.muxed));
-
-        if (playable != null) {
-          debugPrint('[$name] using itag ${playable.tag} '
-              '(${playable.container}, ${playable.bitrate})');
-          return playable.url.toString();
-        }
-        debugPrint('[$name] manifest OK but no playable stream, '
-            'falling back to next client...');
-      } catch (e) {
-        lastError = e;
-        debugPrint('[$name] getManifest failed: $e');
-      }
-    }
-
-    throw Exception('No playable stream found for this video '
-        '(all clients/streams rejected)${lastError != null ? ' | last error: $lastError' : ''}');
-  }
-
-  List<T> _sortByBitrateDesc<T extends StreamInfo>(Iterable<T> streams) =>
-      streams.toList()..sort((a, b) => b.bitrate.compareTo(a.bitrate));
-
-  /// Returns the first stream whose URL is actually fetchable right now.
-  ///
-  /// We probe with a HEAD request — the exact same validity check
-  /// youtube_explode_dart itself uses internally — because under the 2026
-  /// anti-bot rules some URLs (usually the highest-bitrate ones) return 403
-  /// and the player would fail with "(0) source error" (issue #332).
-  Future<StreamInfo?> _firstPlayable(List<StreamInfo> candidates) async {
-    if (candidates.isEmpty) return null;
-
-    final HttpClient httpClient = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 5);
-    try {
-      for (final StreamInfo candidate in candidates) {
-        try {
-          final HttpClientRequest request =
-              await httpClient.headUrl(candidate.url);
-          final HttpClientResponse response =
-              await request.close().timeout(const Duration(seconds: 6));
-          await response.drain<void>().timeout(const Duration(seconds: 6));
-
-          if (response.statusCode == HttpStatus.ok ||
-              response.statusCode == HttpStatus.partialContent) {
-            return candidate;
-          }
-          debugPrint('itag ${candidate.tag} -> HTTP ${response.statusCode}, '
-              'trying next stream');
-        } catch (e) {
-          debugPrint('itag ${candidate.tag} probe failed: $e');
-        }
-      }
-    } finally {
-      httpClient.close(force: true);
-    }
-    return null;
-  }
-
-  void _togglePlayPause() {
-    if (_currentVideo == null) return;
-    if (_audioPlayer.playing) {
-      _audioPlayer.pause();
-    } else {
-      _audioPlayer.play();
-    }
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
-        ),
-        backgroundColor: Colors.redAccent,
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(
-          label: 'DISMISS',
-          textColor: Colors.white,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _yt.close();
-    _audioPlayer.dispose();
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('🐹 Hamster Beats'),
-        backgroundColor: Colors.black87,
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search songs, lofi, artists...',
-                filled: true,
-                fillColor: Colors.grey[900],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search, color: Colors.deepOrange),
-                  onPressed: () => _searchSongs(_searchController.text),
-                ),
-              ),
-              onSubmitted: _searchSongs,
-            ),
-          ),
-          if (_isLoading)
-            const Expanded(
-              child: Center(
-                child: CircularProgressIndicator(color: Colors.deepOrange),
-              ),
-            )
-          else if (_searchResults.isEmpty)
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.music_note, size: 72, color: Colors.grey[700]),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Search for a song to start listening!',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: ListView.builder(
-                itemCount: _searchResults.length,
-                itemBuilder: (context, index) {
-                  final Video video = _searchResults[index];
-                  final bool isCurrent = _currentVideo?.id == video.id;
-                  return ListTile(
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.network(
-                        video.thumbnails.highResUrl,
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 50,
-                          height: 50,
-                          color: Colors.grey[800],
-                          child: const Icon(Icons.music_note, color: Colors.white54),
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      video.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: isCurrent ? Colors.deepOrange : Colors.white,
-                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                    subtitle: Text(
-                      video.author,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.grey[400]),
-                    ),
-                    trailing: _isSongLoading && isCurrent
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.deepOrange,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : IconButton(
-                            icon: Icon(
-                              isCurrent && _isPlaying
-                                  ? Icons.bar_chart // subtle "now playing" indicator
-                                  : Icons.play_arrow,
-                              color: Colors.deepOrange,
-                            ),
-                            onPressed: () => _playSong(video),
-                          ),
-                    onTap: () => _playSong(video),
-                  );
-                },
-              ),
-            ),
-          // ======= MINI-PLAYER BAR (always visible when a track is loaded) =======
-          if (_currentVideo != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                border: Border(
-                  top: BorderSide(color: Colors.deepOrange.withOpacity(0.4), width: 1),
-                ),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.network(
-                        _currentVideo!.thumbnails.highResUrl,
-                        width: 45,
-                        height: 45,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 45,
-                          height: 45,
-                          color: Colors.grey[800],
-                          child: const Icon(Icons.music_note, color: Colors.white54),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _currentVideo!.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _currentVideo!.author,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_isSongLoading)
-                      const SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: CircularProgressIndicator(
-                            color: Colors.deepOrange,
-                            strokeWidth: 2.5,
-                          ),
-                        ),
-                      )
-                    else
-                      IconButton(
-                        icon: Icon(
-                          _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
-                          color: Colors.deepOrange,
-                          size: 36,
-                        ),
-                        onPressed: _togglePlayPause,
-                      ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
+      themeMode: ThemeMode.dark,
+      theme: SidifyTheme.build(theme.accent),
+      darkTheme: SidifyTheme.build(theme.accent),
+      home: const SidifyShell(),
     );
   }
 }
