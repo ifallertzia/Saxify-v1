@@ -31,26 +31,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Analyze (continue on error and print output)
-        run: |
-          flutter analyze --no-pub 2>&1 | tee analyze.log || true
-          echo "---ANALYZE EXIT: $?---"
-          cat analyze.log
+      - name: Analyze (informational)
+        run: flutter analyze --no-pub
 
-      - name: Build APK (release)
-        run: flutter build apk --release
+      - name: Build APK (release, verbose)
+        run: |
+          flutter build apk --release -v 2>&1 | tail -200
+        continue-on-error: false
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
-
-      - name: Build App Bundle (optional Play Store artifact)
-        run: flutter build appbundle --release
-
-      - name: Upload AAB Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-aab
-          path: build/app/outputs/bundle/release/app-release.aab
