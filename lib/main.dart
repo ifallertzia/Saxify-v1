@@ -88,18 +88,8 @@ class _MusicHomePageState extends State<MusicHomePage> {
       // Stop any currently playing track before starting a new one.
       await _audioPlayer.stop();
 
-      // Use YouTube clients that are NOT affected by the Android PO-Token /
-      // anti-bot changes (ios + androidVr return audio-only streams that
-      // resolve without HTTP 403).
-      // NOTE: no `const` here — YoutubeApiClient.ios is `static final`, so a
-      // const list would be a compile-time error.
-      final StreamManifest manifest = await _yt.videos.streams.getManifest(
-        video.id,
-        ytClients: [
-          YoutubeApiClient.ios,
-          YoutubeApiClient.androidVr,
-        ],
-      );
+      final StreamManifest manifest =
+          await _yt.videos.streams.getManifest(video.id);
 
       // Pick the highest-bitrate audio-only stream.
       final List<AudioOnlyStreamInfo> audioStreams =
