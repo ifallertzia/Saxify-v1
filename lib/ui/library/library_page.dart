@@ -1,0 +1,629 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/models/artist.dart';
+import '../../core/models/playlist.dart';
+import '../../core/models/song.dart';
+import '../../core/services/library_service.dart';
+import '../../core/services/playback_service.dart';
+import '../../core/theme/sidify_accents.dart';
+import '../../core/theme/sidify_theme.dart';
+import '../../core/utils/format.dart';
+import '../artist/artist_page.dart';
+import '../widgets/artwork.dart';
+import '../widgets/neon.dart';
+import '../widgets/song_tile.dart';
+import 'playlist_detail_page.dart';
+
+/// Your Library — Songs, Liked Songs, Playlists, Artists and History.
+class LibraryPage extends StatelessWidget {
+  const LibraryPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DefaultTabController(
+      length: 5,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, 14, 20, 6),
+                child: Text(
+                  'Your Library',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.6,
+                    color: SidifyColors.textPrimary,
+                  ),
+                ),
+              ),
+              TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                dividerColor: SidifyColors.border,
+                tabs: <Widget>[
+                  Tab(text: 'Liked'),
+                  Tab(text: 'Playlists'),
+                  Tab(text: 'Songs'),
+                  Tab(text: 'Artists'),
+                  Tab(text: 'History'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: <Widget>[
+                    _LikedTab(),
+                    _PlaylistsTab(),
+                    _SongsTab(),
+                    _ArtistsTab(),
+                    _HistoryTab(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------- Liked Songs
+class _LikedTab extends StatelessWidget {
+  const _LikedTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final LibraryService library = context.watch<LibraryService>();
+    final PlaybackService playback = context.read<PlaybackService>();
+    final List<Song> songs = library.likedSongs;
+
+    if (songs.isEmpty) {
+      return const SingleChildScrollView(
+        child: EmptyState(
+          icon: Icons.favorite_border_rounded,
+          title: 'No liked songs yet',
+          message:
+              'Tap the heart on any track and it will live here, saved on this device.',
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(6, 12, 6, 140),
+      children: <Widget>[
+        _CollectionHeader(
+          label: 'PLAYLIST',
+          title: 'Liked Songs',
+          subtitle: '${songs.length} songs',
+          coverUrl: songs.first.thumbnailUrl,
+          icon: Icons.favorite_rounded,
+          onPlay: () => playback.playQueue(songs),
+          onShuffle: () async {
+            await playback.playQueue(songs);
+            if (!playback.shuffleEnabled) await playback.toggleShuffle();
+          },
+        ),
+        for (int i = 0; i < songs.length; i++)
+          SongTile(
+            song: songs[i],
+            onTap: () => playback.playQueue(songs, startIndex: i),
+          ),
+      ],
+    );
+  }
+}
+
+// ------------------------------------------------------------------ Playlists
+class _PlaylistsTab extends StatelessWidget {
+  const _PlaylistsTab();
+
+  Future<void> _create(BuildContext context, LibraryService library) async {
+    final TextEditingController controller = TextEditingController();
+    final String? name = await showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Text('Create playlist',
+            style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(hintText: 'Playlist name'),
+          onSubmitted: (String v) => Navigator.of(dialogContext).pop(v),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.trim().isEmpty) return;
+    await library.createPlaylist(name);
+  }
+
+  void _openPlaylist(BuildContext context, Playlist playlist) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext c) => PlaylistDetailPage(playlistId: playlist.id),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final LibraryService library = context.watch<LibraryService>();
+    final SidifyAccent accent = context.accent;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 140),
+      children: <Widget>[
+        NeonCard(
+          glow: true,
+          onTap: () => _create(context, library),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: accent.gradient,
+                ),
+                child: const Icon(Icons.add_rounded, color: Colors.black),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('Create playlist',
+                        style: GoogleFonts.spaceGrotesk(
+                            fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Build your own universe of sound',
+                      style: TextStyle(
+                          fontSize: 12, color: SidifyColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: accent.primary),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (library.playlists.isEmpty)
+          const EmptyState(
+            icon: Icons.queue_music_rounded,
+            title: 'No playlists yet',
+            message:
+                'Create one above, then use “Add to playlist” from any song menu.',
+          )
+        else
+          for (final Playlist playlist in library.playlists)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: NeonCard(
+                padding: const EdgeInsets.all(12),
+                onTap: () => _openPlaylist(context, playlist),
+                child: Row(
+                  children: <Widget>[
+                    Artwork(
+                      url: playlist.artwork,
+                      size: 56,
+                      radius: 10,
+                      fallbackIcon: Icons.queue_music_rounded,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(playlist.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 14.5, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${playlist.count} songs · ${Fmt.date(playlist.createdAt)}',
+                            style: const TextStyle(
+                                fontSize: 11.5, color: SidifyColors.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.more_vert_rounded,
+                          size: 20, color: SidifyColors.textFaint),
+                      onPressed: () => _playlistMenu(context, library, playlist),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      ],
+    );
+  }
+
+  void _playlistMenu(
+      BuildContext context, LibraryService library, Playlist playlist) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: SidifyColors.surface,
+      builder: (BuildContext sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.drive_file_rename_outline_rounded),
+              title: const Text('Rename'),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                final TextEditingController controller =
+                    TextEditingController(text: playlist.name);
+                final String? name = await showDialog<String>(
+                  context: context,
+                  builder: (BuildContext dialogContext) => AlertDialog(
+                    title: const Text('Rename playlist'),
+                    content: TextField(
+                      controller: controller,
+                      autofocus: true,
+                      decoration: const InputDecoration(hintText: 'New name'),
+                      onSubmitted: (String v) =>
+                          Navigator.of(dialogContext).pop(v),
+                    ),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop(controller.text),
+                        child: const Text('Save'),
+                      ),
+                    ],
+                  ),
+                );
+                if (name != null && name.trim().isNotEmpty) {
+                  await library.renamePlaylist(playlist.id, name);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded,
+                  color: SidifyColors.danger),
+              title: const Text('Delete playlist',
+                  style: TextStyle(color: SidifyColors.danger)),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                final bool? confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (BuildContext dialogContext) => AlertDialog(
+                    title: const Text('Delete playlist?'),
+                    content: Text(
+                        '"${playlist.name}" and its ${playlist.count} songs will be removed.'),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) await library.deletePlaylist(playlist.id);
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ------------------------------------------------------------------- Songs
+class _SongsTab extends StatelessWidget {
+  const _SongsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final LibraryService library = context.watch<LibraryService>();
+    final PlaybackService playback = context.read<PlaybackService>();
+    final List<Song> songs = library.songs;
+
+    if (songs.isEmpty) {
+      return const SingleChildScrollView(
+        child: EmptyState(
+          icon: Icons.library_music_outlined,
+          title: 'Nothing saved yet',
+          message:
+              'Songs you add to the library from the song menu will collect here.',
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(6, 12, 6, 140),
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Text('${songs.length} saved songs',
+                    style: const TextStyle(
+                        fontSize: 12.5, color: SidifyColors.textMuted)),
+              ),
+              TextButton.icon(
+                onPressed: () => playback.playQueue(songs),
+                icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                label: const Text('Play all', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+        ),
+        for (int i = 0; i < songs.length; i++)
+          SongTile(
+            song: songs[i],
+            onTap: () => playback.playQueue(songs, startIndex: i),
+          ),
+      ],
+    );
+  }
+}
+
+// ------------------------------------------------------------------ Artists
+class _ArtistsTab extends StatelessWidget {
+  const _ArtistsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final LibraryService library = context.watch<LibraryService>();
+    final List<ArtistRef> artists = library.artists;
+
+    if (artists.isEmpty) {
+      return const SingleChildScrollView(
+        child: EmptyState(
+          icon: Icons.person_outline_rounded,
+          title: 'No artists followed',
+          message:
+              'Open an artist from any song and tap follow to keep them here.',
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 140),
+      itemCount: artists.length,
+      itemBuilder: (BuildContext c, int i) {
+        final ArtistRef artist = artists[i];
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+          leading: ClipOval(
+            child: Artwork(url: artist.imageUrl, size: 48, radius: 24),
+          ),
+          title: Text(artist.name,
+              style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Text(artist.subscribers ?? 'Artist',
+              style: const TextStyle(
+                  fontSize: 11.5, color: SidifyColors.textMuted)),
+          trailing: const Icon(Icons.chevron_right_rounded,
+              color: SidifyColors.textFaint),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (BuildContext p) => ArtistPage(
+                channelId: artist.channelId,
+                fallbackName: artist.name,
+                fallbackImageUrl: artist.imageUrl,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ------------------------------------------------------------------ History
+class _HistoryTab extends StatelessWidget {
+  const _HistoryTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final LibraryService library = context.watch<LibraryService>();
+    final PlaybackService playback = context.read<PlaybackService>();
+
+    if (library.history.isEmpty) {
+      return const SingleChildScrollView(
+        child: EmptyState(
+          icon: Icons.history_rounded,
+          title: 'No listening history',
+          message: 'Play something and it will show up here automatically.',
+        ),
+      );
+    }
+
+    final List<Song> ordered =
+        library.history.map((HistoryEntry e) => e.song).toList();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(6, 12, 6, 140),
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 8, 8),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  '${library.history.length} recently played',
+                  style: const TextStyle(
+                      fontSize: 12.5, color: SidifyColors.textMuted),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => playback.playQueue(ordered),
+                icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                label: const Text('Play all', style: TextStyle(fontSize: 12)),
+              ),
+              IconButton(
+                tooltip: 'Clear history',
+                icon: const Icon(Icons.delete_sweep_rounded,
+                    size: 20, color: SidifyColors.textFaint),
+                onPressed: library.clearHistory,
+              ),
+            ],
+          ),
+        ),
+        for (int i = 0; i < library.history.length; i++)
+          SongTile(
+            song: library.history[i].song,
+            subtitle:
+                '${library.history[i].song.artist} · ${Fmt.relative(library.history[i].playedAt)}',
+            onTap: () => playback.playQueue(ordered, startIndex: i),
+          ),
+      ],
+    );
+  }
+}
+
+/// Shared gradient header for a song collection.
+class _CollectionHeader extends StatelessWidget {
+  const _CollectionHeader({
+    required this.label,
+    required this.title,
+    required this.subtitle,
+    required this.coverUrl,
+    required this.icon,
+    required this.onPlay,
+    required this.onShuffle,
+  });
+
+  final String label;
+  final String title;
+  final String subtitle;
+  final String coverUrl;
+  final IconData icon;
+  final VoidCallback onPlay;
+  final VoidCallback onShuffle;
+
+  @override
+  Widget build(BuildContext context) {
+    final SidifyAccent accent = context.accent;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Container(
+                width: 112,
+                height: 112,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(SidifyTheme.radiusMd),
+                  gradient: accent.gradient,
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: accent.primary.withValues(alpha: 0.35),
+                      blurRadius: 30,
+                      offset: const Offset(0, 12),
+                      spreadRadius: -8,
+                    ),
+                  ],
+                ),
+                child: coverUrl.isEmpty
+                    ? Icon(icon, size: 40, color: Colors.black87)
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(SidifyTheme.radiusMd),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: <Widget>[
+                            Artwork(url: coverUrl, radius: 0),
+                            Align(
+                              alignment: Alignment.bottomRight,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Icon(icon, size: 20, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(label,
+                        style: TextStyle(
+                            fontSize: 10,
+                            letterSpacing: 1.5,
+                            fontWeight: FontWeight.w700,
+                            color: accent.primary)),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.spaceGrotesk(
+                          fontSize: 22, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 12, color: SidifyColors.textMuted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: <Widget>[
+              NeonButton(
+                label: 'Play',
+                icon: Icons.play_arrow_rounded,
+                expand: true,
+                onPressed: onPlay,
+              ),
+              const SizedBox(width: 10),
+              IconButton(
+                onPressed: onShuffle,
+                icon: const Icon(Icons.shuffle_rounded),
+                style: IconButton.styleFrom(
+                  backgroundColor: SidifyColors.surfaceAlt,
+                  foregroundColor: SidifyColors.textPrimary,
+                  minimumSize: const Size(48, 48),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
