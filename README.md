@@ -28,3 +28,14 @@ flutter pub get
 flutter run
 ```
 CI builds a release APK on every push / PR (see `.github/workflows/build_apk.yml`).
+
+## In-app updates (Phase 2)
+On launch and via Settings → "Check for updates", Sidify compares its version to
+GitHub Releases (`releases/latest`) and offers an in-app APK download + install
+(`REQUEST_INSTALL_PACKAGES`), so users never need the browser again.
+
+To publish an update:
+1. Bump `version:` in `pubspec.yaml`.
+2. Create a GitHub Release (tag e.g. `v1.2.0`) and attach the CI-built
+   `app-release.apk` asset.
+3. Apps on older versions show the "Update available" dialog.
