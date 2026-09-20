@@ -37,7 +37,8 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Build APK (release)
-        run: flutter build apk --release
+        shell: bash
+        run: set -o pipefail && flutter build apk --release 2>&1 | tee build.log
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -46,10 +47,26 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
 
       - name: Build App Bundle (Play Store)
-        run: flutter build appbundle --release
+        shell: bash
+        run: set -o pipefail && flutter build appbundle --release 2>&1 | tee appbundle.log
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
+
+      # Debugging aid: post the tail of the failed build log as a PR comment
+      - name: Post build failure log to PR
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo "**❌ Build failed on commit ${{ github.sha }}**"
+            echo '```'
+            tail -120 build.log 2>/dev/null || echo "build.log missing"
+            echo '```'
+          } > /tmp/comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/comment.md
