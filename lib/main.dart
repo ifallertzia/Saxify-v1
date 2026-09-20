@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
@@ -88,32 +90,10 @@ class _MusicHomePageState extends State<MusicHomePage> {
       // Stop any currently playing track before starting a new one.
       await _audioPlayer.stop();
 
-      // Use YouTube clients that are NOT affected by the Android PO-Token /
-      // anti-bot changes (ios + androidVr return audio-only streams that
-      // resolve without HTTP 403).
-      // NOTE: no `const` here — YoutubeApiClient.ios is `static final`, so a
-      // const list would be a compile-time error.
-      final StreamManifest manifest = await _yt.videos.streams.getManifest(
-        video.id,
-        ytClients: [
-          YoutubeApiClient.ios,
-          YoutubeApiClient.androidVr,
-        ],
-      );
-
-      // Pick the highest-bitrate audio-only stream.
-      final List<AudioOnlyStreamInfo> audioStreams =
-          manifest.audioOnly.toList()
-            ..sort((a, b) => b.bitrate.compareTo(a.bitrate));
-      if (audioStreams.isEmpty) {
-        throw Exception('No audio-only streams available for this video');
-      }
-      final AudioOnlyStreamInfo streamInfo = audioStreams.first;
-      final String audioStreamUrl = streamInfo.url.toString();
+      final String audioStreamUrl =
+          await _resolvePlayableStreamUrl(video.id);
 
       debugPrint('Playing: ${video.title}');
-      debugPrint('Stream URL length: ${audioStreamUrl.length} | '
-          'Bitrate: ${streamInfo.bitrate} | Container: ${streamInfo.container}');
 
       // Load the stream URL into just_audio.
       await _audioPlayer.setUrl(audioStreamUrl);
@@ -142,6 +122,97 @@ class _MusicHomePageState extends State<MusicHomePage> {
         });
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stream resolution with playback pre-validation.
+  //
+  // Under YouTube's 2026 anti-bot rules, getManifest() still succeeds but some
+  // of the returned stream URLs (usually the highest-bitrate ones) return
+  // HTTP 403 the moment the player fetches them — the player then fails with
+  // "(0) source error" (youtube_explode_dart issue #332).
+  //
+  // Strategy:
+  //  1. Ask each client (highest success rate first) for a manifest.
+  //  2. Sort audio-only streams by bitrate (desc) and HEAD-probe each URL;
+  //     use the first one that actually responds 200/206.
+  //  3. If no audio-only stream is playable, try muxed (A/V) streams — they
+  //     still play fine as audio.
+  //  4. If a whole client yields nothing usable, fall through to the next.
+  // ---------------------------------------------------------------------------
+  static final List<(String, YoutubeApiClient)> _streamClients =
+      <(String, YoutubeApiClient)>[
+    ('androidSdkless', YoutubeApiClient.androidSdkless), // v3 default, no PO-token
+    ('ios', YoutubeApiClient.ios), // no PO-token, no deciphering
+    ('androidVr', YoutubeApiClient.androidVr), // no PO-token
+  ];
+
+  Future<String> _resolvePlayableStreamUrl(VideoId videoId) async {
+    Object? lastError;
+
+    for (final (String name, YoutubeApiClient client) in _streamClients) {
+      try {
+        final StreamManifest manifest =
+            await _yt.videos.streams.getManifest(videoId, ytClients: [client]);
+
+        final StreamInfo? playable =
+            await _firstPlayable(_sortByBitrateDesc(manifest.audioOnly)) ??
+                await _firstPlayable(_sortByBitrateDesc(manifest.muxed));
+
+        if (playable != null) {
+          debugPrint('[$name] using itag ${playable.tag} '
+              '(${playable.container}, ${playable.bitrate})');
+          return playable.url.toString();
+        }
+        debugPrint('[$name] manifest OK but no playable stream, '
+            'falling back to next client...');
+      } catch (e) {
+        lastError = e;
+        debugPrint('[$name] getManifest failed: $e');
+      }
+    }
+
+    throw Exception('No playable stream found for this video '
+        '(all clients/streams rejected)${lastError != null ? ' | last error: $lastError' : ''}');
+  }
+
+  List<T> _sortByBitrateDesc<T extends StreamInfo>(Iterable<T> streams) =>
+      streams.toList()..sort((a, b) => b.bitrate.compareTo(a.bitrate));
+
+  /// Returns the first stream whose URL is actually fetchable right now.
+  ///
+  /// We probe with a HEAD request — the exact same validity check
+  /// youtube_explode_dart itself uses internally — because under the 2026
+  /// anti-bot rules some URLs (usually the highest-bitrate ones) return 403
+  /// and the player would fail with "(0) source error" (issue #332).
+  Future<StreamInfo?> _firstPlayable(List<StreamInfo> candidates) async {
+    if (candidates.isEmpty) return null;
+
+    final HttpClient httpClient = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 5);
+    try {
+      for (final StreamInfo candidate in candidates) {
+        try {
+          final HttpClientRequest request =
+              await httpClient.headUrl(candidate.url);
+          final HttpClientResponse response =
+              await request.close().timeout(const Duration(seconds: 6));
+          await response.drain<void>().timeout(const Duration(seconds: 6));
+
+          if (response.statusCode == HttpStatus.ok ||
+              response.statusCode == HttpStatus.partialContent) {
+            return candidate;
+          }
+          debugPrint('itag ${candidate.tag} -> HTTP ${response.statusCode}, '
+              'trying next stream');
+        } catch (e) {
+          debugPrint('itag ${candidate.tag} probe failed: $e');
+        }
+      }
+    } finally {
+      httpClient.close(force: true);
+    }
+    return null;
   }
 
   void _togglePlayPause() {
