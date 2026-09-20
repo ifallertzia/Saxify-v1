@@ -7,6 +7,11 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -56,17 +61,33 @@ jobs:
           name: app-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
 
-      # Debugging aid: post the tail of the failed build log as a PR comment
+      # Always keep the full build log as an artifact on failure
+      - name: Upload build log (failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+
+      # Post the tail of the failed build log as a PR comment (curl, no gh)
       - name: Post build failure log to PR
         if: failure() && github.event_name == 'pull_request'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         shell: bash
         run: |
           {
-            echo "**❌ Build failed on commit ${{ github.sha }}**"
-            echo '```'
+            echo "**❌ Build failed on commit \`${GITHUB_SHA::7}\`**"
+            echo ''
+            echo '```text'
             tail -120 build.log 2>/dev/null || echo "build.log missing"
             echo '```'
-          } > /tmp/comment.md
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/comment.md
+          } > comment.md
+          jq -Rs '{body: .}' < comment.md > payload.json
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            -d @payload.json | head -c 400
