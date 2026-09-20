@@ -45,19 +45,13 @@ class _MusicHomePageState extends State<MusicHomePage> {
   void initState() {
     super.initState();
 
-    // Listen to full player state to keep play/pause icon in sync with reality.
+    // Keep play/pause icon in sync with real player state.
     _audioPlayer.playerStateStream.listen((state) {
       if (!mounted) return;
       setState(() {
-        _isPlaying = state.playing && state.processingState != ProcessingState.completed;
+        _isPlaying = state.playing &&
+            state.processingState != ProcessingState.completed;
       });
-    });
-
-    // Surface any runtime playback errors (network drops, decode failures, etc.)
-    _audioPlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
-        setState(() => _isPlaying = false);
-      }
     });
   }
 
@@ -101,12 +95,11 @@ class _MusicHomePageState extends State<MusicHomePage> {
         video.id,
         ytClients: const [
           YoutubeApiClient.ios,
-          YoutubeApiClient.safari,
           YoutubeApiClient.androidVr,
         ],
       );
 
-      final AudioOnlyStreamInfo streamInfo = manifest.audioOnly.withHighestBitrate();
+      final AudioOnlyStreamInfo streamInfo = manifest.audioOnly.withHigestBitrate();
       final String audioStreamUrl = streamInfo.url.toString();
 
       debugPrint('Playing: ${video.title}');
