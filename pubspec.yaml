@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  just_audio: ^0.9.36
-  youtube_explode_dart: ^1.10.6
+  just_audio: ^0.9.40
+  youtube_explode_dart: ^2.5.3
 
 dev_dependencies:
   flutter_test:

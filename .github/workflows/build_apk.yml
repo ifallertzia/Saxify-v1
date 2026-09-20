@@ -2,6 +2,8 @@ name: Build Flutter APK
 
 on:
   push:
+    branches: [ main, master, arena/01a0be80-sidify-app ]
+  pull_request:
     branches: [ main, master ]
   workflow_dispatch:
 
@@ -22,17 +24,33 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.x'
+          flutter-version: '3.22.x'
           channel: 'stable'
+          cache: true
+
+      - name: Enable Flutter desktop/web bindings (for pub get safety)
+        run: flutter config --no-analytics
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK
-        run: flutter build apk --release --no-pub
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Build APK (release)
+        run: flutter build apk --release
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Build App Bundle (optional Play Store artifact)
+        run: flutter build appbundle --release
+
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
