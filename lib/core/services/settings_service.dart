@@ -100,7 +100,7 @@ class SettingsService extends ChangeNotifier {
     return Duration(milliseconds: value);
   }
 
-  Future<void> rememberPosition(String songId, Duration position) async {
+  Future<void> saveResumePosition(String songId, Duration position) async {
     final Map<String, dynamic> map = _positions();
     map[songId] = position.inMilliseconds;
     final List<String> keys = map.keys.toList();

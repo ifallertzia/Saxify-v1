@@ -468,7 +468,7 @@ class PlaybackService extends ChangeNotifier {
     if (second > 0 && second % 10 == 0 && second != _lastSavedSecond) {
       _lastSavedSecond = second;
       final Song? song = _current;
-      if (song != null) _settings.rememberPosition(song.id, p);
+      if (song != null) _settings.saveResumePosition(song.id, p);
     }
   }
 
@@ -476,7 +476,7 @@ class PlaybackService extends ChangeNotifier {
     final Song? song = _current;
     if (song == null) return;
     if (_position.inSeconds < 5) return;
-    await _settings.rememberPosition(song.id, _position);
+    await _settings.saveResumePosition(song.id, _position);
   }
 
   Future<void> _onTrackCompleted() async {

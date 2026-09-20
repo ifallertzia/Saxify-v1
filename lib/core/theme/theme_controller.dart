@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../theme/sidify_accents.dart';
-import 'settings_service.dart';
+import '../services/settings_service.dart';
 
 /// Owns "which neon accent is the app wearing right now".
 ///

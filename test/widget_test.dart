@@ -18,7 +18,7 @@ void main() {
     });
 
     test('encode/decode roundtrip', () {
-      const String id = AlbumCard.encode(
+      final String id = AlbumCard.encode(
         query: 'lofi beats',
         title: 'Lo-Fi Corner',
         artist: 'Unknown Artist',
