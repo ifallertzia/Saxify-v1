@@ -441,6 +441,15 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                 icon: Icons.queue_music_rounded,
                                 onTap: _showQueueSheet,
                               ),
+                              _ChipButton(
+                                label: 'EQ',
+                                icon: Icons.graphic_eq_rounded,
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const EqualizerPage(),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),

@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/library_service.dart';
 import '../../core/theme/saxify_theme.dart';
-import '../../core/utils/backup_codec.dart';
 
 /// Copy JSON is the old action. Paste & Import is new, with merge or replace.
 Future<void> showBackupSheet(BuildContext context, LibraryService library) async {

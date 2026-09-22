@@ -4,8 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../config/branding.dart';
-
 /// Lock-screen / Bluetooth controls via audio_service (through just_audio_background).
 ///
 /// Init is optional. If it fails, the existing [AudioPlayer] path still works.

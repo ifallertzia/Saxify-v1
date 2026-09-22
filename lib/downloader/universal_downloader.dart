@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../config/backend_config.dart';
-import '../config/branding.dart';
 import '../core/services/native_bridge.dart';
 import '../core/utils/filenames.dart';
 import 'download_history_store.dart';

@@ -31,7 +31,7 @@ class PlaylistSyncService {
             }),
           )
           .timeout(const Duration(seconds: 20));
-      return _codeFrom(res, copyToClipboard);
+      return await _codeFrom(res, copyToClipboard);
     } catch (e) {
       _log('shareSingle: $e');
     }
@@ -55,7 +55,7 @@ class PlaylistSyncService {
             }),
           )
           .timeout(const Duration(seconds: 20));
-      return _codeFrom(res, copyToClipboard);
+      return await _codeFrom(res, copyToClipboard);
     } catch (e) {
       _log('shareAll: $e');
     }
