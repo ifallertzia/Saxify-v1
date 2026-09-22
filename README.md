@@ -1,4 +1,4 @@
-# Sidify
+# Saxify 
 
 Sidify — *Stream beyond limits.* A neon, YouTube-powered music player built with
 Flutter. The frontend is a faithful recreation of the Sidify web app
