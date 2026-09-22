@@ -6,8 +6,8 @@ import '../../core/models/album_card.dart';
 import '../../core/models/song.dart';
 import '../../core/services/playback_service.dart';
 import '../../core/services/youtube_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../widgets/artwork.dart';
 import '../widgets/neon.dart';
 import '../widgets/song_tile.dart';
@@ -33,7 +33,7 @@ class _AlbumPageState extends State<AlbumPage> {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     final PlaybackService playback = context.read<PlaybackService>();
 
     return Scaffold(
@@ -58,7 +58,7 @@ class _AlbumPageState extends State<AlbumPage> {
               SliverAppBar(
                 expandedHeight: 330,
                 pinned: true,
-                backgroundColor: SidifyColors.background,
+                backgroundColor: SaxifyColors.background,
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     fit: StackFit.expand,
@@ -72,7 +72,7 @@ class _AlbumPageState extends State<AlbumPage> {
                             colors: <Color>[
                               Colors.black.withValues(alpha: 0.30),
                               Colors.black.withValues(alpha: 0.60),
-                              SidifyColors.background,
+                              SaxifyColors.background,
                             ],
                           ),
                         ),
@@ -134,7 +134,7 @@ class _AlbumPageState extends State<AlbumPage> {
                                     widget.album.artist,
                                     style: const TextStyle(
                                         fontSize: 13,
-                                        color: SidifyColors.textSecondary),
+                                        color: SaxifyColors.textSecondary),
                                   ),
                                 ],
                               ),
@@ -185,7 +185,7 @@ class _AlbumPageState extends State<AlbumPage> {
                   child: Text(
                     '${tracks.length} tracks · ${_humanTotal(total)}',
                     style: const TextStyle(
-                        fontSize: 12, color: SidifyColors.textMuted),
+                        fontSize: 12, color: SaxifyColors.textMuted),
                   ),
                 ),
               ),
@@ -232,7 +232,7 @@ class _AlbumSkeleton extends StatelessWidget {
     return const Scaffold(
       body: Column(
         children: <Widget>[
-          SizedBox(height: 330, child: ColoredBox(color: SidifyColors.surfaceAlt)),
+          SizedBox(height: 330, child: ColoredBox(color: SaxifyColors.surfaceAlt)),
           SizedBox(height: 20),
           LoadingRail(itemCount: 6, height: 64),
         ],

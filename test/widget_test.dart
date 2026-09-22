@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sidify/core/models/album_card.dart';
-import 'package:sidify/core/theme/sidify_accents.dart';
-import 'package:sidify/core/utils/format.dart';
-import 'package:sidify/ui/widgets/sidify_logo.dart';
+import 'package:saxify/core/models/album_card.dart';
+import 'package:saxify/core/theme/saxify_accents.dart';
+import 'package:saxify/core/utils/format.dart';
+import 'package:saxify/ui/widgets/saxify_logo.dart';
 
 void main() {
   group('AlbumCard ytq codec', () {
@@ -54,9 +54,9 @@ void main() {
 
   group('accents', () {
     test('six accents ship and byId falls back', () {
-      expect(SidifyAccents.all.length, 6);
-      expect(SidifyAccents.byId('neon-violet'), SidifyAccents.neonViolet);
-      expect(SidifyAccents.byId('nope'), SidifyAccents.neonViolet);
+      expect(SaxifyAccents.all.length, 6);
+      expect(SaxifyAccents.byId('neon-violet'), SaxifyAccents.neonViolet);
+      expect(SaxifyAccents.byId('nope'), SaxifyAccents.neonViolet);
     });
   });
 
@@ -65,10 +65,10 @@ void main() {
       await tester.pumpWidget(
         Theme(
           data: ThemeData.dark(),
-          child: const Center(child: SidifyLogo(size: 40)),
+          child: const Center(child: SaxifyLogo(size: 40)),
         ),
       );
-      expect(find.byType(SidifyLogo), findsOneWidget);
+      expect(find.byType(SaxifyLogo), findsOneWidget);
       expect(find.byType(CustomPaint, skipOffstage: false), findsWidgets);
     });
   });

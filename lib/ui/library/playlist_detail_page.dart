@@ -6,8 +6,9 @@ import '../../core/models/playlist.dart';
 import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
+import '../settings/playlist_sync_sheet.dart';
 import '../widgets/artwork.dart';
 import '../widgets/neon.dart';
 import '../widgets/song_tile.dart';
@@ -22,7 +23,7 @@ class PlaylistDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final LibraryService library = context.watch<LibraryService>();
     final PlaybackService playback = context.read<PlaybackService>();
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
 
     final Playlist? playlist = library.playlistById(playlistId);
 
@@ -48,7 +49,7 @@ class PlaylistDetailPage extends StatelessWidget {
           SliverAppBar(
             pinned: true,
             expandedHeight: 260,
-            backgroundColor: SidifyColors.background,
+            backgroundColor: SaxifyColors.background,
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -61,7 +62,7 @@ class PlaylistDetailPage extends StatelessWidget {
                         colors: <Color>[
                           accent.primary.withValues(alpha: 0.35),
                           accent.secondary.withValues(alpha: 0.12),
-                          SidifyColors.background,
+                          SaxifyColors.background,
                         ],
                       ),
                     ),
@@ -78,7 +79,7 @@ class PlaylistDetailPage extends StatelessWidget {
                           height: 112,
                           decoration: BoxDecoration(
                             borderRadius:
-                                BorderRadius.circular(SidifyTheme.radiusMd),
+                                BorderRadius.circular(SaxifyTheme.radiusMd),
                             gradient: songs.isEmpty ? accent.gradient : null,
                             boxShadow: <BoxShadow>[
                               BoxShadow(
@@ -94,7 +95,7 @@ class PlaylistDetailPage extends StatelessWidget {
                                   size: 40, color: Colors.black87)
                               : ClipRRect(
                                   borderRadius: BorderRadius.circular(
-                                      SidifyTheme.radiusMd),
+                                      SaxifyTheme.radiusMd),
                                   child: Artwork(
                                     url: playlist.artwork,
                                     size: 112,
@@ -126,7 +127,7 @@ class PlaylistDetailPage extends StatelessWidget {
                               Text('${playlist.count} songs',
                                   style: const TextStyle(
                                       fontSize: 12,
-                                      color: SidifyColors.textSecondary)),
+                                      color: SaxifyColors.textSecondary)),
                             ],
                           ),
                         ),
@@ -152,6 +153,11 @@ class PlaylistDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   IconButton(
+                    tooltip: 'Share code',
+                    onPressed: () => sharePlaylistCode(context, playlist),
+                    icon: const Icon(Icons.ios_share_rounded),
+                  ),
+                  IconButton(
                     onPressed: songs.isEmpty
                         ? null
                         : () async {
@@ -162,8 +168,8 @@ class PlaylistDetailPage extends StatelessWidget {
                           },
                     icon: const Icon(Icons.shuffle_rounded),
                     style: IconButton.styleFrom(
-                      backgroundColor: SidifyColors.surfaceAlt,
-                      foregroundColor: SidifyColors.textPrimary,
+                      backgroundColor: SaxifyColors.surfaceAlt,
+                      foregroundColor: SaxifyColors.textPrimary,
                       minimumSize: const Size(48, 48),
                     ),
                   ),

@@ -3,15 +3,15 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../core/theme/sidify_accents.dart';
+import '../../core/theme/saxify_accents.dart';
 
-/// Sidify's own mark — a neon "S" soundwave on a rounded gradient tile.
+/// Saxify's own mark — a neon "S" soundwave on a rounded gradient tile.
 ///
 /// Drawn with [CustomPainter] so it stays razor sharp at every size and picks up
 /// whatever accent the app is wearing right now. It is an original design; it
 /// deliberately borrows nothing from any third-party streaming brand.
-class SidifyLogo extends StatelessWidget {
-  const SidifyLogo({
+class SaxifyLogo extends StatelessWidget {
+  const SaxifyLogo({
     super.key,
     this.size = 40,
     this.accent,
@@ -20,7 +20,7 @@ class SidifyLogo extends StatelessWidget {
   });
 
   final double size;
-  final SidifyAccent? accent;
+  final SaxifyAccent? accent;
   final bool showTile;
 
   /// Override the S colour (defaults to white for contrast on the gradient).
@@ -28,14 +28,14 @@ class SidifyLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent effective =
-        accent ?? Theme.of(context).extension<SidifyAccentExtension>()?.accent ??
-            SidifyAccents.neonViolet;
+    final SaxifyAccent effective =
+        accent ?? Theme.of(context).extension<SaxifyAccentExtension>()?.accent ??
+            SaxifyAccents.neonViolet;
     return SizedBox(
       width: size,
       height: size,
       child: CustomPaint(
-        painter: _SidifyLogoPainter(
+        painter: _SaxifyLogoPainter(
           accent: effective,
           showTile: showTile,
           strokeColor: strokeColor ?? Colors.white,
@@ -45,14 +45,14 @@ class SidifyLogo extends StatelessWidget {
   }
 }
 
-class _SidifyLogoPainter extends CustomPainter {
-  _SidifyLogoPainter({
+class _SaxifyLogoPainter extends CustomPainter {
+  _SaxifyLogoPainter({
     required this.accent,
     required this.showTile,
     required this.strokeColor,
   });
 
-  final SidifyAccent accent;
+  final SaxifyAccent accent;
   final bool showTile;
   final Color strokeColor;
 
@@ -131,15 +131,15 @@ class _SidifyLogoPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_SidifyLogoPainter oldDelegate) =>
+  bool shouldRepaint(_SaxifyLogoPainter oldDelegate) =>
       oldDelegate.accent.id != accent.id ||
       oldDelegate.showTile != showTile ||
       oldDelegate.strokeColor != strokeColor;
 }
 
 /// Logo tile + wordmark, the way the site's sidebar shows it.
-class SidifyWordmark extends StatelessWidget {
-  const SidifyWordmark({
+class SaxifyWordmark extends StatelessWidget {
+  const SaxifyWordmark({
     super.key,
     this.logoSize = 34,
     this.fontSize = 20,
@@ -150,18 +150,18 @@ class SidifyWordmark extends StatelessWidget {
   final double logoSize;
   final double fontSize;
   final bool showSubtitle;
-  final SidifyAccent? accent;
+  final SaxifyAccent? accent;
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent effective =
-        accent ?? Theme.of(context).extension<SidifyAccentExtension>()?.accent ??
-            SidifyAccents.neonViolet;
+    final SaxifyAccent effective =
+        accent ?? Theme.of(context).extension<SaxifyAccentExtension>()?.accent ??
+            SaxifyAccents.neonViolet;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        SidifyLogo(size: logoSize, accent: effective),
+        SaxifyLogo(size: logoSize, accent: effective),
         SizedBox(width: logoSize * 0.3),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,7 +171,7 @@ class SidifyWordmark extends StatelessWidget {
               shaderCallback: (Rect bounds) =>
                   effective.horizontalGradient.createShader(bounds),
               child: Text(
-                'Sidify',
+                'Saxify',
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: fontSize,
                   fontWeight: FontWeight.w700,

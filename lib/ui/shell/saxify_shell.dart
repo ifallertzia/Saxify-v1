@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/models/song.dart';
 import '../../core/services/playback_service.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/services/recommendation_service.dart';
+import '../../core/theme/saxify_theme.dart';
+import '../../core/services/artwork_cache.dart';
+import '../downloader/downloader_page.dart';
 import '../home/home_page.dart';
 import '../library/library_page.dart';
 import '../search/search_page.dart';
@@ -12,16 +16,17 @@ import 'mini_player.dart';
 import 'shell_controller.dart';
 
 /// App shell: bottom navigation, the persistent mini player, and the four tabs.
-class SidifyShell extends StatefulWidget {
-  const SidifyShell({super.key});
+class SaxifyShell extends StatefulWidget {
+  const SaxifyShell({super.key});
 
   @override
-  State<SidifyShell> createState() => _SidifyShellState();
+  State<SaxifyShell> createState() => _SaxifyShellState();
 }
 
-class _SidifyShellState extends State<SidifyShell> {
+class _SaxifyShellState extends State<SaxifyShell> {
   late final ShellController _shell = context.read<ShellController>();
   String? _shownNotice;
+  bool _dbToastShown = false;
 
   @override
   void initState() {
@@ -30,6 +35,8 @@ class _SidifyShellState extends State<SidifyShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<PlaybackService>().addListener(_onPlaybackChanged);
+      context.read<RecommendationService>().addListener(_onRecommendations);
+      _onRecommendations();
     });
 
     // Phase 2: once the UI is up, quietly check GitHub Releases. Only shows a
@@ -65,6 +72,17 @@ class _SidifyShellState extends State<SidifyShell> {
       );
   }
 
+  void _onRecommendations() {
+    if (!mounted || _dbToastShown) return;
+    if (!context.read<RecommendationService>().store.recovered) return;
+    _dbToastShown = true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Local data reset — playlists cloud se restore honge.'),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _shell.removeListener(_onShellChanged);
@@ -74,7 +92,7 @@ class _SidifyShellState extends State<SidifyShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SidifyColors.background,
+      backgroundColor: SaxifyColors.background,
       extendBody: false,
       body: Column(
         children: <Widget>[
@@ -85,15 +103,17 @@ class _SidifyShellState extends State<SidifyShell> {
                 HomePage(),
                 SearchPage(),
                 LibraryPage(),
+                DownloaderPage(),
                 SettingsPage(),
               ],
             ),
           ),
+          const _NextArtworkPrecache(),
           const MiniPlayer(),
           NavigationBar(
             selectedIndex: _shell.tab.index,
             onDestinationSelected: (int i) =>
-                _shell.select(SidifyTab.values[i]),
+                _shell.select(SaxifyTab.values[i]),
             destinations: const <Widget>[
               NavigationDestination(
                 icon: Icon(Icons.home_outlined),
@@ -111,6 +131,11 @@ class _SidifyShellState extends State<SidifyShell> {
                 label: 'Library',
               ),
               NavigationDestination(
+                icon: Icon(Icons.download_outlined),
+                selectedIcon: Icon(Icons.download_rounded),
+                label: 'Save',
+              ),
+              NavigationDestination(
                 icon: Icon(Icons.settings_outlined),
                 selectedIcon: Icon(Icons.settings_rounded),
                 label: 'Settings',
@@ -119,6 +144,38 @@ class _SidifyShellState extends State<SidifyShell> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Warms the next sleeve about 5 seconds before the current track ends.
+class _NextArtworkPrecache extends StatefulWidget {
+  const _NextArtworkPrecache();
+
+  @override
+  State<_NextArtworkPrecache> createState() => _NextArtworkPrecacheState();
+}
+
+class _NextArtworkPrecacheState extends State<_NextArtworkPrecache> {
+  String? _warmed;
+
+  @override
+  Widget build(BuildContext context) {
+    final PlaybackService playback = context.watch<PlaybackService>();
+    return StreamBuilder<Duration>(
+      stream: playback.positionStream,
+      builder: (BuildContext context, AsyncSnapshot<Duration> snap) {
+        final Song? next = playback.nextUp;
+        final Duration left = playback.duration - (snap.data ?? Duration.zero);
+        if (next != null &&
+            left > Duration.zero &&
+            left <= const Duration(seconds: 5) &&
+            _warmed != next.id) {
+          _warmed = next.id;
+          ArtworkCache.precache(context, next.thumbnailUrl);
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 }

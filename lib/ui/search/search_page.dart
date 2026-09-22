@@ -2,17 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/models/album_card.dart';
 import '../../core/models/song.dart';
+import '../../core/services/home_catalog.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
+import '../../core/services/recommendation_service.dart';
 import '../../core/services/youtube_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
+import '../../data/labels.dart';
+import '../album/album_page.dart';
+import '../artist/artist_router.dart';
+import '../brands/brands_page.dart';
 import '../shell/shell_controller.dart';
+import '../widgets/media_cards.dart';
 import '../widgets/neon.dart';
 import '../widgets/song_tile.dart';
 
-/// Search — same `_yt.search` backend as before, site-styled results.
+enum _SearchKind { songs, artists, albums, playlists, podcasts, videos }
+
+/// Search still calls the existing YouTube search. The layout around it is new.
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key, this.initialQuery});
 
@@ -31,6 +41,7 @@ class _SearchPageState extends State<SearchPage> {
   String? _error;
   String _activeQuery = '';
   int _lastNonce = -1;
+  _SearchKind _kind = _SearchKind.songs;
 
   @override
   void initState() {
@@ -58,6 +69,24 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  String _queryFor(String raw) {
+    switch (_kind) {
+      case _SearchKind.songs:
+        return raw;
+      case _SearchKind.artists:
+        return '$raw artist';
+      case _SearchKind.albums:
+        return '$raw full album';
+      case _SearchKind.playlists:
+        return '$raw playlist';
+      case _SearchKind.podcasts:
+        return '$raw podcast';
+      case _SearchKind.videos:
+        return '$raw official video';
+    }
+  }
+
+  /// Same search entry point the app already used: `youtube.searchSongs`.
   Future<void> _runSearch(String query) async {
     final String q = query.trim();
     if (q.isEmpty) return;
@@ -72,7 +101,9 @@ class _SearchPageState extends State<SearchPage> {
     try {
       final YoutubeService youtube = context.read<YoutubeService>();
       final LibraryService library = context.read<LibraryService>();
-      final List<Song> results = await youtube.searchSongs(q, limit: 24);
+      final RecommendationService reco = context.read<RecommendationService>();
+      reco.noteSearch(q);
+      final List<Song> results = await youtube.searchSongs(_queryFor(q), limit: 24);
       await library.rememberSearch(q);
       if (!mounted) return;
       setState(() {
@@ -99,8 +130,9 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     final LibraryService library = context.watch<LibraryService>();
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     final PlaybackService playback = context.read<PlaybackService>();
+    final bool idle = _results.isEmpty && !_loading && _error == null;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -109,7 +141,7 @@ class _SearchPageState extends State<SearchPage> {
         child: Column(
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
               child: Row(
                 children: <Widget>[
                   Expanded(
@@ -118,21 +150,21 @@ class _SearchPageState extends State<SearchPage> {
                       focusNode: _focusNode,
                       textInputAction: TextInputAction.search,
                       onSubmitted: _runSearch,
+                      onChanged: (_) => setState(() {}),
                       style: const TextStyle(fontSize: 14),
                       decoration: InputDecoration(
                         hintText: 'Songs, artists, albums, moods…',
-                        prefixIcon: Icon(Icons.search_rounded,
-                            color: accent.primary),
+                        prefixIcon: Icon(Icons.search_rounded, color: accent.primary),
                         suffixIcon: _controller.text.isEmpty
                             ? null
                             : IconButton(
-                                icon: const Icon(Icons.close_rounded,
-                                    size: 18, color: SidifyColors.textFaint),
+                                icon: const Icon(Icons.close_rounded, size: 18, color: SaxifyColors.textFaint),
                                 onPressed: () {
                                   _controller.clear();
                                   setState(() {
                                     _results = <Song>[];
                                     _activeQuery = '';
+                                    _error = null;
                                   });
                                 },
                               ),
@@ -141,60 +173,35 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                   IconButton(
                     tooltip: 'Search',
-                    icon: Icon(Icons.arrow_forward_rounded,
-                        color: accent.primary),
+                    icon: Icon(Icons.arrow_forward_rounded, color: accent.primary),
                     onPressed: () => _runSearch(_controller.text),
                   ),
                 ],
               ),
             ),
-
-            // Recent searches while idle
-            if (_results.isEmpty && !_loading && library.recentSearches.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Text(
-                          'RECENT SEARCHES',
-                          style: TextStyle(
-                            fontSize: 10,
-                            letterSpacing: 1.4,
-                            fontWeight: FontWeight.w700,
-                            color: accent.primary,
-                          ),
-                        ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: library.clearSearchHistory,
-                          child: const Text('Clear',
-                              style: TextStyle(
-                                  fontSize: 12, color: SidifyColors.textMuted)),
-                        ),
-                      ],
+            SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: <Widget>[
+                  for (final _SearchKind kind in _SearchKind.values)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(_kindLabel(kind)),
+                        selected: _kind == kind,
+                        onSelected: (_) {
+                          setState(() => _kind = kind);
+                          if (_controller.text.trim().isNotEmpty) {
+                            _runSearch(_controller.text);
+                          }
+                        },
+                      ),
                     ),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: <Widget>[
-                        for (final String q in library.recentSearches.take(10))
-                          ActionChip(
-                            label: Text(q, style: const TextStyle(fontSize: 12)),
-                            avatar: const Icon(Icons.history_rounded, size: 14),
-                            onPressed: () {
-                              _controller.text = q;
-                              _runSearch(q);
-                            },
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
+                ],
               ),
-
+            ),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
@@ -206,68 +213,250 @@ class _SearchPageState extends State<SearchPage> {
                           actionLabel: 'Try again',
                           onAction: () => _runSearch(_activeQuery),
                         )
-                      : _results.isEmpty
-                          ? EmptyState(
-                              icon: Icons.travel_explore_rounded,
-                              title: 'Search Sidify',
-                              message:
-                                  'Find any song, artist or mood. Tap a result to '
-                                  'start playing — the queue keeps the music going.',
-                            )
-                          : ListView(
-                              padding: const EdgeInsets.fromLTRB(6, 4, 6, 140),
-                              children: <Widget>[
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-                                  child: Row(
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Text(
-                                          '${_results.length} results for "$_activeQuery"',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.spaceGrotesk(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: SidifyColors.textSecondary,
-                                          ),
+                      : ListView(
+                          padding: const EdgeInsets.only(bottom: 140),
+                          children: <Widget>[
+                            if (library.recentSearches.isNotEmpty && idle)
+                              _RecentSearches(
+                                queries: library.recentSearches.take(10).toList(),
+                                onTap: (String q) {
+                                  _controller.text = q;
+                                  _runSearch(q);
+                                },
+                                onRemove: library.removeSearch,
+                                onClear: library.clearSearchHistory,
+                              ),
+                            if (idle) const _ExploreMusic(),
+                            if (idle)
+                              const EmptyState(
+                                icon: Icons.travel_explore_rounded,
+                                title: 'Kuch bhi search karo — songs, artists, albums…',
+                                message: 'Search is on this screen, and on Explore Music too.',
+                              ),
+                            if (_results.isNotEmpty) ...<Widget>[
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                                child: Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Text(
+                                        '${_results.length} results for "$_activeQuery"',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: SaxifyColors.textSecondary,
                                         ),
                                       ),
-                                      TextButton.icon(
-                                        onPressed: () =>
-                                            playback.playQueue(_results),
-                                        icon: const Icon(Icons.play_arrow_rounded,
-                                            size: 18),
-                                        label: const Text('Play all',
-                                            style: TextStyle(fontSize: 12)),
-                                      ),
-                                      IconButton(
-                                        tooltip: 'Shuffle',
-                                        visualDensity: VisualDensity.compact,
-                                        icon: const Icon(Icons.shuffle_rounded,
-                                            size: 18),
-                                        onPressed: () async {
-                                          await playback.playQueue(_results);
-                                          if (!playback.shuffleEnabled) {
-                                            await playback.toggleShuffle();
-                                          }
-                                        },
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: () => playback.playQueue(_results),
+                                      icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                                      label: const Text('Play all', style: TextStyle(fontSize: 12)),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              if (_kind == _SearchKind.artists)
+                                _ArtistResults(songs: _results)
+                              else
                                 for (int i = 0; i < _results.length; i++)
                                   SongTile(
                                     song: _results[i],
-                                    onTap: () =>
-                                        playback.playQueue(_results, startIndex: i),
+                                    onTap: () => playback.playQueue(_results, startIndex: i),
                                   ),
-                              ],
-                            ),
+                            ],
+                          ],
+                        ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  String _kindLabel(_SearchKind kind) {
+    switch (kind) {
+      case _SearchKind.songs:
+        return 'Songs';
+      case _SearchKind.artists:
+        return 'Artists';
+      case _SearchKind.albums:
+        return 'Albums';
+      case _SearchKind.playlists:
+        return 'Playlists';
+      case _SearchKind.podcasts:
+        return 'Podcasts';
+      case _SearchKind.videos:
+        return 'Videos';
+    }
+  }
+}
+
+class _RecentSearches extends StatelessWidget {
+  const _RecentSearches({
+    required this.queries,
+    required this.onTap,
+    required this.onRemove,
+    required this.onClear,
+  });
+
+  final List<String> queries;
+  final ValueChanged<String> onTap;
+  final ValueChanged<String> onRemove;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Text(
+                'PREVIOUS SEARCHES',
+                style: TextStyle(
+                  fontSize: 10,
+                  letterSpacing: 1.4,
+                  fontWeight: FontWeight.w700,
+                  color: context.accent.primary,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: onClear,
+                child: const Text('Clear all', style: TextStyle(fontSize: 12, color: SaxifyColors.textMuted)),
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              for (final String q in queries)
+                InputChip(
+                  label: Text(q, style: const TextStyle(fontSize: 12)),
+                  onPressed: () => onTap(q),
+                  onDeleted: () => onRemove(q),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExploreMusic extends StatelessWidget {
+  const _ExploreMusic();
+
+  @override
+  Widget build(BuildContext context) {
+    final ShellController shell = context.read<ShellController>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const SectionHeader(title: 'Explore Music', subtitle: 'Always here, even before you search'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              ActionChip(label: const Text('Trending Now'), onPressed: () => shell.goSearch('top hits')),
+              ActionChip(label: const Text('New Releases'), onPressed: () => shell.goSearch('new songs 2026')),
+              ActionChip(label: const Text('Top Charts India'), onPressed: () => shell.goSearch('top songs india')),
+              ActionChip(label: const Text('Top Charts Global'), onPressed: () => shell.goSearch('global top 50')),
+              ActionChip(
+                label: const Text('Music Brands'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const BrandsPage()),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SectionHeader(title: 'Moods & Genres'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              for (final (String, String) mood in HomeCatalog.moodGenres)
+                MoodChip(label: mood.$1, onTap: () => shell.goSearch(mood.$2)),
+            ],
+          ),
+        ),
+        const SectionHeader(title: 'New releases'),
+        HorizontalRail(
+          height: 210,
+          itemCount: HomeCatalog.newReleases.length,
+          builder: (BuildContext context, int i) {
+            final AlbumCard album = HomeCatalog.newReleases[i];
+            return AlbumTile(
+              coverUrl: album.coverUrl,
+              title: album.title,
+              artist: album.artist,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => AlbumPage(album: album)),
+              ),
+            );
+          },
+        ),
+        const SectionHeader(title: 'Music brands'),
+        SizedBox(
+          height: 92,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: MusicBrands.all.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (BuildContext context, int i) {
+              final brand = MusicBrands.all[i];
+              return ActionChip(
+                label: Text(brand.name),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => BrandChannelPage(brand: brand)),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ArtistResults extends StatelessWidget {
+  const _ArtistResults({required this.songs});
+
+  final List<Song> songs;
+
+  @override
+  Widget build(BuildContext context) {
+    final Map<String, Song> byArtist = <String, Song>{};
+    for (final Song song in songs) {
+      byArtist.putIfAbsent(song.artist, () => song);
+    }
+    final List<Song> unique = byArtist.values.toList();
+    return Column(
+      children: <Widget>[
+        for (final Song song in unique)
+          ListTile(
+            leading: const Icon(Icons.person_rounded),
+            title: Text(song.artist),
+            subtitle: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+            onTap: () => openArtistByName(
+              context,
+              name: song.artist,
+              channelId: song.channelId,
+            ),
+          ),
+      ],
     );
   }
 }

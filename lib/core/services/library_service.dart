@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/backup_codec.dart';
 import '../models/artist.dart';
 import '../models/playlist.dart';
 import '../models/song.dart';
@@ -23,12 +24,12 @@ class LibraryService extends ChangeNotifier {
 
   final SharedPreferences _prefs;
 
-  static const String kLiked = 'sidify.liked';
-  static const String kSongs = 'sidify.songs';
-  static const String kHistory = 'sidify.history';
-  static const String kPlaylists = 'sidify.playlists';
-  static const String kArtists = 'sidify.artists';
-  static const String kSearchHistory = 'sidify.search_history';
+  static const String kLiked = 'saxify.liked';
+  static const String kSongs = 'saxify.songs';
+  static const String kHistory = 'saxify.history';
+  static const String kPlaylists = 'saxify.playlists';
+  static const String kArtists = 'saxify.artists';
+  static const String kSearchHistory = 'saxify.search_history';
 
   static const int _maxHistory = 120;
   static const int _maxSearchHistory = 24;
@@ -83,14 +84,19 @@ class LibraryService extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------------ likes
+  void Function(Song song, bool liked)? onLikeChanged;
+  void Function()? onPlaylistsChanged;
+
   Future<void> toggleLike(Song song) async {
-    if (isLiked(song.id)) {
+    final bool liked = !isLiked(song.id);
+    if (!liked) {
       _liked.removeWhere((Song s) => s.id == song.id);
     } else {
       _liked.insert(0, song);
     }
     await _persistSongs(kLiked, _liked);
     notifyListeners();
+    onLikeChanged?.call(song, liked);
   }
 
   // ------------------------------------------------------------ your songs
@@ -113,6 +119,7 @@ class LibraryService extends ChangeNotifier {
     _playlists.insert(0, playlist);
     await _persistPlaylists();
     notifyListeners();
+    onPlaylistsChanged?.call();
     return playlist;
   }
 
@@ -122,12 +129,14 @@ class LibraryService extends ChangeNotifier {
     p.name = name.trim().isEmpty ? p.name : name.trim();
     await _persistPlaylists();
     notifyListeners();
+    onPlaylistsChanged?.call();
   }
 
   Future<void> deletePlaylist(String id) async {
     _playlists.removeWhere((Playlist p) => p.id == id);
     await _persistPlaylists();
     notifyListeners();
+    onPlaylistsChanged?.call();
   }
 
   /// Returns false when the song was already in that playlist.
@@ -138,6 +147,7 @@ class LibraryService extends ChangeNotifier {
     p.songs.add(song);
     await _persistPlaylists();
     notifyListeners();
+    onPlaylistsChanged?.call();
     return true;
   }
 
@@ -147,6 +157,7 @@ class LibraryService extends ChangeNotifier {
     p.songs.removeWhere((Song s) => s.id == songId);
     await _persistPlaylists();
     notifyListeners();
+    onPlaylistsChanged?.call();
   }
 
   // ----------------------------------------------------------------- history
@@ -197,6 +208,12 @@ class LibraryService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> removeSearch(String query) async {
+    _searchHistory.remove(query);
+    await _prefs.setStringList(kSearchHistory, _searchHistory);
+    notifyListeners();
+  }
+
   Future<void> clearSearchHistory() async {
     _searchHistory = <String>[];
     await _prefs.remove(kSearchHistory);
@@ -205,7 +222,7 @@ class LibraryService extends ChangeNotifier {
 
   // ----------------------------------------------------------------- backup
   String exportBackup() => jsonEncode(<String, dynamic>{
-        'app': 'sidify',
+        'app': 'saxify',
         'version': 1,
         'exportedAt': DateTime.now().toIso8601String(),
         'liked': _liked.map((Song s) => s.toJson()).toList(),
@@ -215,27 +232,82 @@ class LibraryService extends ChangeNotifier {
         'artists': _artists.map((ArtistRef a) => a.toJson()).toList(),
       });
 
-  /// Merges an exported blob back into the library.
-  Future<bool> importBackup(String raw) async {
+  String? validateBackup(String raw) => validateBackupJson(raw);
+
+  /// Cloud or clipboard playlists are merged by name. Existing songs stay.
+  Future<void> mergePlaylists(List<Playlist> incoming) async {
+    _mergePlaylistList(incoming);
+    await _persistPlaylists();
+    notifyListeners();
+    onPlaylistsChanged?.call();
+  }
+
+  /// [merge] unions by id/name. Otherwise the blob replaces the local library.
+  Future<bool> importBackup(String raw, {bool merge = false}) async {
+    if (validateBackupJson(raw) != null) return false;
     try {
       final Object? decoded = jsonDecode(raw);
       if (decoded is! Map) return false;
-      _liked = _songsFrom(decoded['liked']);
-      _songs = _songsFrom(decoded['songs']);
-      _playlists = _rawListFrom(decoded['playlists']).map(Playlist.fromJson).toList();
-      _history = _rawListFrom(decoded['history']).map(HistoryEntry.fromJson).toList();
-      _artists = _rawListFrom(decoded['artists']).map(ArtistRef.fromJson).toList();
+      if (!merge) {
+        _liked = _songsFrom(decoded['liked']);
+        _songs = _songsFrom(decoded['songs']);
+        _playlists = _rawListFrom(decoded['playlists']).map(Playlist.fromJson).toList();
+        _history = _rawListFrom(decoded['history']).map(HistoryEntry.fromJson).toList();
+        _artists = _rawListFrom(decoded['artists']).map(ArtistRef.fromJson).toList();
+      } else {
+        _liked = _mergeSongs(_liked, _songsFrom(decoded['liked']));
+        _songs = _mergeSongs(_songs, _songsFrom(decoded['songs']));
+        _mergePlaylistList(_rawListFrom(decoded['playlists']).map(Playlist.fromJson).toList());
+        for (final HistoryEntry entry in _rawListFrom(decoded['history']).map(HistoryEntry.fromJson)) {
+          if (entry.song.id.isEmpty) continue;
+          if (_history.any((HistoryEntry e) => e.song.id == entry.song.id)) continue;
+          _history.add(entry);
+        }
+        for (final ArtistRef artist in _rawListFrom(decoded['artists']).map(ArtistRef.fromJson)) {
+          if (!isFollowing(artist.channelId)) _artists.add(artist);
+        }
+      }
       await _persistSongs(kLiked, _liked);
       await _persistSongs(kSongs, _songs);
       await _persistPlaylists();
       await _persistHistory();
       await _persistRaw(kArtists, _artists.map((ArtistRef a) => a.toJson()).toList());
       notifyListeners();
+      onPlaylistsChanged?.call();
       return true;
     } catch (e) {
       debugPrint('importBackup failed: $e');
       return false;
     }
+  }
+
+  void _mergePlaylistList(List<Playlist> incoming) {
+    for (final Playlist remote in incoming) {
+      Playlist? existing;
+      for (final Playlist local in _playlists) {
+        if (local.id == remote.id || local.name.toLowerCase() == remote.name.toLowerCase()) {
+          existing = local;
+          break;
+        }
+      }
+      if (existing == null) {
+        _playlists.insert(0, remote);
+        continue;
+      }
+      for (final Song song in remote.songs) {
+        if (song.id.isEmpty) continue;
+        if (!existing.songs.any((Song s) => s.id == song.id)) existing.songs.add(song);
+      }
+    }
+  }
+
+  List<Song> _mergeSongs(List<Song> current, List<Song> incoming) {
+    final List<Song> out = List<Song>.from(current);
+    for (final Song song in incoming) {
+      if (song.id.isEmpty) continue;
+      if (!out.any((Song s) => s.id == song.id)) out.add(song);
+    }
+    return out;
   }
 
   // ------------------------------------------------------------- internals

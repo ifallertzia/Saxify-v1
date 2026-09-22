@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../../core/models/playlist.dart';
 import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
 import 'artwork.dart';
 import 'neon.dart';
@@ -70,7 +70,7 @@ class _AddToPlaylistSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final LibraryService library = context.watch<LibraryService>();
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.62,
@@ -80,8 +80,8 @@ class _AddToPlaylistSheet extends StatelessWidget {
       builder: (BuildContext context, ScrollController scrollController) {
         return Container(
           decoration: const BoxDecoration(
-            color: SidifyColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(SidifyTheme.radiusLg)),
+            color: SaxifyColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(SaxifyTheme.radiusLg)),
           ),
           child: Column(
             children: <Widget>[
@@ -90,7 +90,7 @@ class _AddToPlaylistSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: SidifyColors.border,
+                  color: SaxifyColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -113,7 +113,7 @@ class _AddToPlaylistSheet extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                                fontSize: 12, color: SidifyColors.textMuted),
+                                fontSize: 12, color: SaxifyColors.textMuted),
                           ),
                         ],
                       ),
@@ -141,7 +141,7 @@ class _AddToPlaylistSheet extends StatelessWidget {
                           style: TextStyle(fontWeight: FontWeight.w700)),
                       subtitle: const Text('Start a fresh collection',
                           style: TextStyle(
-                              fontSize: 12, color: SidifyColors.textMuted)),
+                              fontSize: 12, color: SaxifyColors.textMuted)),
                       onTap: () => _promptCreate(context, library),
                     ),
                     if (library.playlists.isEmpty)
@@ -168,13 +168,13 @@ class _AddToPlaylistSheet extends StatelessWidget {
                               style: const TextStyle(fontWeight: FontWeight.w600)),
                           subtitle: Text('${playlist.count} songs',
                               style: const TextStyle(
-                                  fontSize: 12, color: SidifyColors.textMuted)),
+                                  fontSize: 12, color: SaxifyColors.textMuted)),
                           trailing: playlist.songs
                                   .any((Song s) => s.id == song.id)
                               ? Icon(Icons.check_circle_rounded,
                                   color: accent.primary, size: 20)
                               : const Icon(Icons.add_circle_outline_rounded,
-                                  color: SidifyColors.textFaint, size: 20),
+                                  color: SaxifyColors.textFaint, size: 20),
                           onTap: () async {
                             final bool added =
                                 await library.addToPlaylist(playlist.id, song);

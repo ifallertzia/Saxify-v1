@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../player/full_player_page.dart';
 import '../widgets/artwork.dart';
 
@@ -19,7 +19,7 @@ class MiniPlayer extends StatelessWidget {
   Widget build(BuildContext context) {
     final PlaybackService playback = context.watch<PlaybackService>();
     final LibraryService library = context.watch<LibraryService>();
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     final Song? song = playback.current;
 
     if (song == null) return const SizedBox.shrink();
@@ -31,18 +31,18 @@ class MiniPlayer extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(SidifyTheme.radiusMd),
+          borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (BuildContext c) => const FullPlayerPage()),
           ),
           child: Ink(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(SidifyTheme.radiusMd),
+              borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
               gradient: LinearGradient(
                 colors: <Color>[
                   accent.primary.withValues(alpha: 0.18),
-                  SidifyColors.card,
-                  SidifyColors.card,
+                  SaxifyColors.card,
+                  SaxifyColors.card,
                 ],
               ),
               border: Border.all(color: accent.primary.withValues(alpha: 0.28)),
@@ -61,7 +61,7 @@ class MiniPlayer extends StatelessWidget {
                 // hairline progress
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(SidifyTheme.radiusMd)),
+                      top: Radius.circular(SaxifyTheme.radiusMd)),
                   child: StreamBuilder<Duration>(
                     stream: playback.positionStream,
                     initialData: playback.position,
@@ -112,7 +112,7 @@ class MiniPlayer extends StatelessWidget {
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
-                                color: SidifyColors.textPrimary,
+                                color: SaxifyColors.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -121,7 +121,7 @@ class MiniPlayer extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  fontSize: 11.5, color: SidifyColors.textMuted),
+                                  fontSize: 11.5, color: SaxifyColors.textMuted),
                             ),
                           ],
                         ),
@@ -133,7 +133,7 @@ class MiniPlayer extends StatelessWidget {
                               ? Icons.favorite_rounded
                               : Icons.favorite_border_rounded,
                           size: 19,
-                          color: liked ? accent.primary : SidifyColors.textFaint,
+                          color: liked ? accent.primary : SaxifyColors.textFaint,
                         ),
                         onPressed: () => library.toggleLike(song),
                       ),
@@ -160,7 +160,7 @@ class MiniPlayer extends StatelessWidget {
                       IconButton(
                         visualDensity: VisualDensity.compact,
                         icon: const Icon(Icons.skip_next_rounded,
-                            size: 24, color: SidifyColors.textSecondary),
+                            size: 24, color: SaxifyColors.textSecondary),
                         onPressed: playback.next,
                       ),
                     ],

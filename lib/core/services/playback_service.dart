@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+
+import 'notification_bootstrap.dart';
 
 import '../models/song.dart';
 import 'library_service.dart';
@@ -60,6 +63,12 @@ class PlaybackService extends ChangeNotifier {
   Timer? _sleepTicker;
   int _consecutiveFailures = 0;
   int _lastSavedSecond = -1;
+
+  /// Fired after a track really starts. Recommendations listen; playback does not wait.
+  void Function(Song song)? onTrackStarted;
+
+  /// Fired when the listener skips a track that barely started.
+  void Function(Song song)? onTrackSkipped;
 
   /// Stream URLs resolved ahead of time for the next track (gapless).
   final Map<String, String> _prewarmed = <String, String>{};
@@ -209,7 +218,17 @@ class PlaybackService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> next() => _advance(manual: true);
+  Future<void> next() {
+    final Song? song = _current;
+    if (song != null && _position < const Duration(seconds: 20)) {
+      try {
+        onTrackSkipped?.call(song);
+      } catch (e) {
+        debugPrint('onTrackSkipped failed: $e');
+      }
+    }
+    return _advance(manual: true);
+  }
 
   Future<void> previous() async {
     // Like every other player: rewind first, jump back only when we're near
@@ -381,7 +400,21 @@ class PlaybackService extends ChangeNotifier {
       final String? cached = _prewarmed.remove(song.id);
       final String url = cached ?? await resolvePlayableStreamUrl(VideoId(song.id));
 
-      await _player.setUrl(url);
+      // Same URI load setUrl used. The tag is only notification metadata.
+      final Uri? art = Uri.tryParse(song.thumbnailUrl);
+      await _player.setAudioSource(
+        AudioSource.uri(
+          Uri.parse(url),
+          tag: MediaItem(
+            id: song.id,
+            title: song.title,
+            artist: song.artist,
+            album: song.subtitle ?? 'Saxify',
+            artUri: art != null && art.hasScheme ? art : null,
+            duration: song.duration,
+          ),
+        ),
+      );
       await _player.setSpeed(_settings.playbackSpeed);
 
       final Duration? resume = _settings.resumePositionFor(song.id);
@@ -404,6 +437,12 @@ class PlaybackService extends ChangeNotifier {
       } catch (e) {
         debugPrint('recordPlay failed: $e');
       }
+      try {
+        onTrackStarted?.call(song);
+      } catch (e) {
+        debugPrint('onTrackStarted failed: $e');
+      }
+      NotificationBootstrap.requestOnFirstPlay();
     } catch (e, stackTrace) {
       // ---- NO SILENT FAILURE, AND NO DEAD STOP ----
       debugPrint('Playback error: $e\n$stackTrace');

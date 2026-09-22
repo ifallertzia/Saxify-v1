@@ -8,9 +8,10 @@ import 'package:provider/provider.dart';
 import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
+import 'equalizer_page.dart';
 import '../widgets/artwork.dart';
 import '../widgets/song_menu.dart';
 import '../widgets/song_tile.dart';
@@ -53,9 +54,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       builder: (BuildContext sheetContext) => SafeArea(
         child: Container(
           decoration: const BoxDecoration(
-            color: SidifyColors.surface,
+            color: SaxifyColors.surface,
             borderRadius: BorderRadius.vertical(
-                top: Radius.circular(SidifyTheme.radiusLg)),
+                top: Radius.circular(SaxifyTheme.radiusLg)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -88,7 +89,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   Widget build(BuildContext context) {
     final PlaybackService playback = context.watch<PlaybackService>();
     final LibraryService library = context.watch<LibraryService>();
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     final Song? song = playback.current;
 
     if (song == null) {
@@ -98,7 +99,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               const Icon(Icons.music_off_rounded,
-                  size: 46, color: SidifyColors.textFaint),
+                  size: 46, color: SaxifyColors.textFaint),
               const SizedBox(height: 14),
               Text('Nothing playing',
                   style: GoogleFonts.spaceGrotesk(
@@ -120,7 +121,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         : playback.duration;
 
     return Scaffold(
-      backgroundColor: SidifyColors.background,
+      backgroundColor: SaxifyColors.background,
       body: Stack(
         children: <Widget>[
           // Ambient backdrop.
@@ -133,8 +134,8 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                   colors: <Color>[
                     accent.primary.withValues(alpha: 0.30),
                     accent.secondary.withValues(alpha: 0.10),
-                    SidifyColors.background,
-                    SidifyColors.background,
+                    SaxifyColors.background,
+                    SaxifyColors.background,
                   ],
                   stops: const <double>[0, 0.28, 0.62, 1],
                 ),
@@ -202,7 +203,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius:
-                                BorderRadius.circular(SidifyTheme.radiusLg),
+                                BorderRadius.circular(SaxifyTheme.radiusLg),
                             boxShadow: <BoxShadow>[
                               BoxShadow(
                                 color: accent.primary.withValues(alpha: 0.35),
@@ -219,12 +220,12 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                           ),
                           child: ClipRRect(
                             borderRadius:
-                                BorderRadius.circular(SidifyTheme.radiusLg),
+                                BorderRadius.circular(SaxifyTheme.radiusLg),
                             child: Hero(
                               tag: 'player-artwork-${song.id}',
                               child: Artwork(
                                 url: song.thumbnailUrl,
-                                radius: SidifyTheme.radiusLg,
+                                radius: SaxifyTheme.radiusLg,
                                 size: double.infinity,
                               ),
                             ),
@@ -262,7 +263,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                   fontSize: 13.5,
-                                  color: SidifyColors.textSecondary),
+                                  color: SaxifyColors.textSecondary),
                             ),
                           ],
                         ),
@@ -273,7 +274,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                           liked
                               ? Icons.favorite_rounded
                               : Icons.favorite_border_rounded,
-                          color: liked ? accent.primary : SidifyColors.textMuted,
+                          color: liked ? accent.primary : SaxifyColors.textMuted,
                         ),
                         onPressed: () => library.toggleLike(song),
                       ),
@@ -324,7 +325,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                       : position),
                                   style: const TextStyle(
                                       fontSize: 11.5,
-                                      color: SidifyColors.textMuted,
+                                      color: SaxifyColors.textMuted,
                                       fontFeatures: <FontFeature>[
                                         FontFeature.tabularFigures()
                                       ]),
@@ -341,7 +342,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                     '-${Fmt.clock(total - position)}',
                                     style: const TextStyle(
                                         fontSize: 11.5,
-                                        color: SidifyColors.textMuted,
+                                        color: SaxifyColors.textMuted,
                                         fontFeatures: <FontFeature>[
                                           FontFeature.tabularFigures()
                                         ]),
@@ -405,7 +406,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                               ? Icons.volume_up_rounded
                               : Icons.tune_rounded,
                           size: 20,
-                          color: SidifyColors.textMuted,
+                          color: SaxifyColors.textMuted,
                         ),
                         onPressed: () =>
                             setState(() => _showVolume = !_showVolume),
@@ -468,7 +469,7 @@ class _PlayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -517,13 +518,13 @@ class _TransportIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     return IconButton(
       onPressed: onTap,
       iconSize: size,
       icon: Icon(
         icon,
-        color: active ? accent.primary : SidifyColors.textPrimary,
+        color: active ? accent.primary : SaxifyColors.textPrimary,
       ),
     );
   }
@@ -544,21 +545,21 @@ class _ChipButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(SidifyTheme.radiusXl),
+        borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(SidifyTheme.radiusXl),
+            borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
             color: active
                 ? accent.primary.withValues(alpha: 0.16)
-                : SidifyColors.surfaceAlt,
+                : SaxifyColors.surfaceAlt,
             border: Border.all(
-              color: active ? accent.primary : SidifyColors.border,
+              color: active ? accent.primary : SaxifyColors.border,
             ),
           ),
           child: Row(
@@ -566,14 +567,14 @@ class _ChipButton extends StatelessWidget {
             children: <Widget>[
               Icon(icon,
                   size: 14,
-                  color: active ? accent.primary : SidifyColors.textMuted),
+                  color: active ? accent.primary : SaxifyColors.textMuted),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
-                  color: active ? accent.primary : SidifyColors.textSecondary,
+                  color: active ? accent.primary : SaxifyColors.textSecondary,
                 ),
               ),
             ],
@@ -595,9 +596,9 @@ class _SleepSheet extends StatelessWidget {
     return SafeArea(
       child: Container(
         decoration: const BoxDecoration(
-          color: SidifyColors.surface,
+          color: SaxifyColors.surface,
           borderRadius:
-              BorderRadius.vertical(top: Radius.circular(SidifyTheme.radiusLg)),
+              BorderRadius.vertical(top: Radius.circular(SaxifyTheme.radiusLg)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -608,7 +609,7 @@ class _SleepSheet extends StatelessWidget {
                     fontSize: 15, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             const Text('Pause playback automatically',
-                style: TextStyle(fontSize: 12, color: SidifyColors.textMuted)),
+                style: TextStyle(fontSize: 12, color: SaxifyColors.textMuted)),
             const SizedBox(height: 10),
             for (final int m in minutes)
               ListTile(
@@ -631,7 +632,7 @@ class _SleepSheet extends StatelessWidget {
             if (playback.sleepRemaining != null)
               ListTile(
                 title: const Text('Turn off timer',
-                    style: TextStyle(color: SidifyColors.danger)),
+                    style: TextStyle(color: SaxifyColors.danger)),
                 onTap: () {
                   playback.cancelSleepTimer();
                   Navigator.of(context).pop();
@@ -651,7 +652,7 @@ class _QueueSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final PlaybackService playback = context.watch<PlaybackService>();
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     final List<Song> queue = playback.queue;
 
     return DraggableScrollableSheet(
@@ -662,9 +663,9 @@ class _QueueSheet extends StatelessWidget {
       builder: (BuildContext context, ScrollController controller) {
         return Container(
           decoration: const BoxDecoration(
-            color: SidifyColors.surface,
+            color: SaxifyColors.surface,
             borderRadius: BorderRadius.vertical(
-                top: Radius.circular(SidifyTheme.radiusLg)),
+                top: Radius.circular(SaxifyTheme.radiusLg)),
           ),
           child: Column(
             children: <Widget>[
@@ -673,7 +674,7 @@ class _QueueSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: SidifyColors.border,
+                  color: SaxifyColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -692,7 +693,7 @@ class _QueueSheet extends StatelessWidget {
                           Text(
                             '${queue.length} tracks in the queue',
                             style: const TextStyle(
-                                fontSize: 12, color: SidifyColors.textMuted),
+                                fontSize: 12, color: SaxifyColors.textMuted),
                           ),
                         ],
                       ),
@@ -702,13 +703,13 @@ class _QueueSheet extends StatelessWidget {
                       icon: Icon(Icons.shuffle_rounded,
                           color: playback.shuffleEnabled
                               ? accent.primary
-                              : SidifyColors.textMuted),
+                              : SaxifyColors.textMuted),
                       onPressed: playback.toggleShuffle,
                     ),
                     IconButton(
                       tooltip: 'Clear queue',
                       icon: const Icon(Icons.delete_sweep_rounded,
-                          color: SidifyColors.textMuted),
+                          color: SaxifyColors.textMuted),
                       onPressed: playback.clearQueue,
                     ),
                   ],
@@ -719,7 +720,7 @@ class _QueueSheet extends StatelessWidget {
                 child: queue.isEmpty
                     ? const Center(
                         child: Text('Queue is empty',
-                            style: TextStyle(color: SidifyColors.textMuted)),
+                            style: TextStyle(color: SaxifyColors.textMuted)),
                       )
                     : ListView.builder(
                         controller: controller,

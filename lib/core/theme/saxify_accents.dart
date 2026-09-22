@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-/// One neon accent from the Sidify palette.
+/// One neon accent from the Saxify palette.
 ///
-/// The web app (sidify.vercel.app) lets you "paint the neon across the whole
+/// The web app (saxify.vercel.app) lets you "paint the neon across the whole
 /// app" with an accent colour. The mobile app ships the same idea: a small set
 /// of accents that can either rotate automatically or be pinned by the user.
 @immutable
-class SidifyAccent {
-  const SidifyAccent({
+class SaxifyAccent {
+  const SaxifyAccent({
     required this.id,
     required this.label,
     required this.primary,
@@ -56,14 +56,14 @@ class SidifyAccent {
       );
 }
 
-/// The 6 accents Sidify rotates through.
+/// The 6 accents Saxify rotates through.
 ///
 /// Neon Violet is the signature accent; the rest are alternates so the app can
 /// cycle its look every couple of minutes (or be pinned from Settings).
-class SidifyAccents {
-  const SidifyAccents._();
+class SaxifyAccents {
+  const SaxifyAccents._();
 
-  static const SidifyAccent neonViolet = SidifyAccent(
+  static const SaxifyAccent neonViolet = SaxifyAccent(
     id: 'neon-violet',
     label: 'Neon Violet',
     primary: Color(0xFFA855F7),
@@ -71,7 +71,7 @@ class SidifyAccents {
     tint: Color(0x2EA855F7),
   );
 
-  static const SidifyAccent aquaPulse = SidifyAccent(
+  static const SaxifyAccent aquaPulse = SaxifyAccent(
     id: 'aqua-pulse',
     label: 'Aqua Pulse',
     primary: Color(0xFF22D3EE),
@@ -79,7 +79,7 @@ class SidifyAccents {
     tint: Color(0x2E22D3EE),
   );
 
-  static const SidifyAccent cyberLime = SidifyAccent(
+  static const SaxifyAccent cyberLime = SaxifyAccent(
     id: 'cyber-lime',
     label: 'Cyber Lime',
     primary: Color(0xFFA3E635),
@@ -87,7 +87,7 @@ class SidifyAccents {
     tint: Color(0x2EA3E635),
   );
 
-  static const SidifyAccent sunsetCoral = SidifyAccent(
+  static const SaxifyAccent sunsetCoral = SaxifyAccent(
     id: 'sunset-coral',
     label: 'Sunset Coral',
     primary: Color(0xFFFB7185),
@@ -95,7 +95,7 @@ class SidifyAccents {
     tint: Color(0x2EFB7185),
   );
 
-  static const SidifyAccent magentaFlux = SidifyAccent(
+  static const SaxifyAccent magentaFlux = SaxifyAccent(
     id: 'magenta-flux',
     label: 'Magenta Flux',
     primary: Color(0xFFF472B6),
@@ -103,7 +103,7 @@ class SidifyAccents {
     tint: Color(0x2EF472B6),
   );
 
-  static const SidifyAccent goldRush = SidifyAccent(
+  static const SaxifyAccent goldRush = SaxifyAccent(
     id: 'gold-rush',
     label: 'Gold Rush',
     primary: Color(0xFFFCD34D),
@@ -111,7 +111,7 @@ class SidifyAccents {
     tint: Color(0x2EFCD34D),
   );
 
-  static const List<SidifyAccent> all = <SidifyAccent>[
+  static const List<SaxifyAccent> all = <SaxifyAccent>[
     neonViolet,
     aquaPulse,
     cyberLime,
@@ -120,8 +120,8 @@ class SidifyAccents {
     goldRush,
   ];
 
-  static SidifyAccent byId(String? id) {
-    for (final SidifyAccent accent in all) {
+  static SaxifyAccent byId(String? id) {
+    for (final SaxifyAccent accent in all) {
       if (accent.id == id) return accent;
     }
     return neonViolet;
@@ -140,25 +140,25 @@ class SidifyAccents {
 /// Makes the live accent reachable through `Theme.of(context)` so deep widgets
 /// can paint themselves without an extra provider lookup.
 @immutable
-class SidifyAccentExtension extends ThemeExtension<SidifyAccentExtension> {
-  const SidifyAccentExtension(this.accent);
+class SaxifyAccentExtension extends ThemeExtension<SaxifyAccentExtension> {
+  const SaxifyAccentExtension(this.accent);
 
-  final SidifyAccent accent;
-
-  @override
-  SidifyAccentExtension copyWith({SidifyAccent? accent}) =>
-      SidifyAccentExtension(accent ?? this.accent);
+  final SaxifyAccent accent;
 
   @override
-  SidifyAccentExtension lerp(covariant ThemeExtension<SidifyAccentExtension>? other, double t) {
-    if (other is! SidifyAccentExtension) return this;
+  SaxifyAccentExtension copyWith({SaxifyAccent? accent}) =>
+      SaxifyAccentExtension(accent ?? this.accent);
+
+  @override
+  SaxifyAccentExtension lerp(covariant ThemeExtension<SaxifyAccentExtension>? other, double t) {
+    if (other is! SaxifyAccentExtension) return this;
     return t < 0.5 ? this : other;
   }
 }
 
 /// Convenience accessor used across the UI.
-extension SidifyAccentX on BuildContext {
-  SidifyAccent get accent =>
-      Theme.of(this).extension<SidifyAccentExtension>()?.accent ??
-      SidifyAccents.neonViolet;
+extension SaxifyAccentX on BuildContext {
+  SaxifyAccent get accent =>
+      Theme.of(this).extension<SaxifyAccentExtension>()?.accent ??
+      SaxifyAccents.neonViolet;
 }

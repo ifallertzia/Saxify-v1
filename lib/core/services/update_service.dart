@@ -16,7 +16,7 @@ class UpdateService {
   /// brief; if it has no releases we fall back to the repo that CI actually
   /// publishes from, so the feature works either way.
   static const List<String> releaseRepos = <String>[
-    'dastaanenajdik/sidify-app',
+    'dastaanenajdik/saxify-app',
     'dastaanenajdik/testing',
   ];
 
@@ -113,7 +113,7 @@ class UpdateService {
     void Function(double fraction, int receivedBytes)? onProgress,
   }) async {
     final Directory dir = await _downloadDir();
-    final File file = File('${dir.path}/sidify-update.apk');
+    final File file = File('${dir.path}/saxify-update.apk');
 
     final http.Request request = http.Request('GET', Uri.parse(url));
     final http.StreamedResponse response = await _client.send(request);

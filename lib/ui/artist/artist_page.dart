@@ -8,8 +8,8 @@ import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
 import '../../core/services/youtube_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
 import '../widgets/artwork.dart';
 import '../widgets/neon.dart';
@@ -45,7 +45,7 @@ class _ArtistPageState extends State<ArtistPage> {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
 
     return Scaffold(
       body: FutureBuilder<_ArtistData>(
@@ -84,8 +84,8 @@ class _ArtistPageState extends State<ArtistPage> {
               SliverAppBar(
                 expandedHeight: 300,
                 pinned: true,
-                backgroundColor: SidifyColors.background,
-                foregroundColor: SidifyColors.textPrimary,
+                backgroundColor: SaxifyColors.background,
+                foregroundColor: SaxifyColors.textPrimary,
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     fit: StackFit.expand,
@@ -102,8 +102,8 @@ class _ArtistPageState extends State<ArtistPage> {
                             end: Alignment.bottomCenter,
                             colors: <Color>[
                               Colors.black.withValues(alpha: 0.35),
-                              SidifyColors.background.withValues(alpha: 0.92),
-                              SidifyColors.background,
+                              SaxifyColors.background.withValues(alpha: 0.92),
+                              SaxifyColors.background,
                             ],
                           ),
                         ),
@@ -165,7 +165,7 @@ class _ArtistPageState extends State<ArtistPage> {
                                       '${Fmt.count(data.channel.subscribersCount)} followers',
                                       style: const TextStyle(
                                           fontSize: 12,
-                                          color: SidifyColors.textSecondary),
+                                          color: SaxifyColors.textSecondary),
                                     ),
                                   ],
                                 ],
@@ -276,7 +276,7 @@ class _IconButtonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     return Tooltip(
       message: tooltip,
       child: Material(
@@ -289,15 +289,15 @@ class _IconButtonTile extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              color: SidifyColors.surfaceAlt,
+              color: SaxifyColors.surfaceAlt,
               border: Border.all(
-                color: active ? accent.primary : SidifyColors.border,
+                color: active ? accent.primary : SaxifyColors.border,
               ),
             ),
             child: Icon(
               icon,
               size: 20,
-              color: active ? accent.primary : SidifyColors.textSecondary,
+              color: active ? accent.primary : SaxifyColors.textSecondary,
             ),
           ),
         ),
@@ -323,7 +323,7 @@ class _ArtistSkeleton extends StatelessWidget {
         children: <Widget>[
           SizedBox(
             height: 300,
-            child: ColoredBox(color: SidifyColors.surfaceAlt),
+            child: ColoredBox(color: SaxifyColors.surfaceAlt),
           ),
           SizedBox(height: 20),
           LoadingRail(itemCount: 6, height: 64),

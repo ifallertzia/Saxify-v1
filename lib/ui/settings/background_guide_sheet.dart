@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../widgets/neon.dart';
 
 /// "Instructions to play in background" — the guide the web app ships in
@@ -22,30 +22,30 @@ class _BackgroundGuideSheet extends StatelessWidget {
   static const List<(String, String)> _steps = <(String, String)>[
     (
       'Start a song first',
-      'Background audio only keeps running once Sidify is actually playing '
+      'Background audio only keeps running once Saxify is actually playing '
           'something. Press play, then lock the screen or switch apps.',
     ),
     (
       'Keep the notification visible',
-      'Do not swipe Sidify away from the notification shade. That is the '
+      'Do not swipe Saxify away from the notification shade. That is the '
           'service holding the audio session open — dismissing it can stop '
           'playback on some phones.',
     ),
     (
-      'Turn off battery optimisation for Sidify',
-      'Settings → Apps → Sidify → Battery → choose “Unrestricted” (or “No '
+      'Turn off battery optimisation for Saxify',
+      'Settings → Apps → Saxify → Battery → choose “Unrestricted” (or “No '
           'restrictions”). This is the single most common reason music stops '
           'after a few minutes.',
     ),
     (
       'Allow background activity',
-      'Settings → Apps → Sidify → allow “Background activity” / “Display over '
+      'Settings → Apps → Saxify → allow “Background activity” / “Display over '
           'other apps”. Manufacturer skins (MIUI, ColorOS, One UI, OxygenOS) '
           'each have their own switch.',
     ),
     (
-      'Lock Sidify in Recents',
-      'Open Recents, pull the Sidify card down and tap the lock icon. The app '
+      'Lock Saxify in Recents',
+      'Open Recents, pull the Saxify card down and tap the lock icon. The app '
           'will not be killed when you clear recent apps.',
     ),
     (
@@ -57,7 +57,7 @@ class _BackgroundGuideSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.82,
@@ -67,9 +67,9 @@ class _BackgroundGuideSheet extends StatelessWidget {
       builder: (BuildContext context, ScrollController controller) {
         return Container(
           decoration: const BoxDecoration(
-            color: SidifyColors.surface,
+            color: SaxifyColors.surface,
             borderRadius: BorderRadius.vertical(
-                top: Radius.circular(SidifyTheme.radiusLg)),
+                top: Radius.circular(SaxifyTheme.radiusLg)),
           ),
           child: ListView(
             controller: controller,
@@ -80,7 +80,7 @@ class _BackgroundGuideSheet extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: SidifyColors.border,
+                    color: SaxifyColors.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -105,7 +105,7 @@ class _BackgroundGuideSheet extends StatelessWidget {
               const SizedBox(height: 6),
               const Text(
                 'Keep the music going with the screen off or the app closed.',
-                style: TextStyle(fontSize: 12.5, color: SidifyColors.textMuted),
+                style: TextStyle(fontSize: 12.5, color: SaxifyColors.textMuted),
               ),
               const SizedBox(height: 20),
               for (int i = 0; i < _steps.length; i++)
@@ -149,7 +149,7 @@ class _BackgroundGuideSheet extends StatelessWidget {
                               style: const TextStyle(
                                   fontSize: 12.5,
                                   height: 1.5,
-                                  color: SidifyColors.textSecondary),
+                                  color: SaxifyColors.textSecondary),
                             ),
                           ],
                         ),
@@ -169,7 +169,7 @@ class _BackgroundGuideSheet extends StatelessWidget {
                     const Expanded(
                       child: Text(
                         'Still cutting out? Turn on “Autoplay” and “Gapless '
-                        'playback” in Settings — if a stream dies, Sidify skips '
+                        'playback” in Settings — if a stream dies, Saxify skips '
                         'to a similar track instead of stopping.',
                         style: TextStyle(fontSize: 12, height: 1.5),
                       ),
