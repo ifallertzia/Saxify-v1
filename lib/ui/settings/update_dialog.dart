@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/update_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../widgets/neon.dart';
-import '../widgets/sidify_logo.dart';
+import '../widgets/saxify_logo.dart';
 
 /// Runs an update check and, if a newer release exists, shows the
 /// "Update available" dialog with in-app download + install.
@@ -90,7 +90,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     final UpdateInfo info = widget.info;
 
     return Dialog(
@@ -102,7 +102,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           children: <Widget>[
             Row(
               children: <Widget>[
-                const SidifyLogo(size: 40),
+                const SaxifyLogo(size: 40),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -116,7 +116,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                         '${info.currentVersion} → ${info.latestVersion}'
                         '${info.sizeLabel.isNotEmpty ? ' · ${info.sizeLabel}' : ''}',
                         style: const TextStyle(
-                            fontSize: 12.5, color: SidifyColors.textMuted),
+                            fontSize: 12.5, color: SaxifyColors.textMuted),
                       ),
                     ],
                   ),
@@ -129,16 +129,16 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 constraints: const BoxConstraints(maxHeight: 140),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: SidifyColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(SidifyTheme.radiusSm),
-                  border: Border.all(color: SidifyColors.border),
+                  color: SaxifyColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(SaxifyTheme.radiusSm),
+                  border: Border.all(color: SaxifyColors.border),
                 ),
                 child: SingleChildScrollView(
                   child: Text(
                     info.notes,
                     style: const TextStyle(
                         fontSize: 12.5, height: 1.5,
-                        color: SidifyColors.textSecondary),
+                        color: SaxifyColors.textSecondary),
                   ),
                 ),
               ),
@@ -150,13 +150,13 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               Text(
                 'Downloading… ${(_progress * 100).toStringAsFixed(0)}%',
                 style: const TextStyle(
-                    fontSize: 12, color: SidifyColors.textMuted),
+                    fontSize: 12, color: SaxifyColors.textMuted),
               ),
             ] else if (_phase == _Phase.error) ...<Widget>[
               Text(
                 'Download failed: $_error',
                 style: const TextStyle(
-                    fontSize: 12, color: SidifyColors.danger),
+                    fontSize: 12, color: SaxifyColors.danger),
               ),
               const SizedBox(height: 12),
               Row(
@@ -208,7 +208,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   '“app-release.apk” to the GitHub release to enable in-app '
                   'install.',
                   style: TextStyle(
-                      fontSize: 11.5, color: SidifyColors.textMuted),
+                      fontSize: 11.5, color: SaxifyColors.textMuted),
                 ),
               ],
             ],
@@ -216,7 +216,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               const SizedBox(height: 10),
               Text(
                 'APK downloaded — the installer should now open. If it did not, '
-                'allow “Install unknown apps” for Sidify and try again.',
+                'allow “Install unknown apps” for Saxify and try again.',
                 style: TextStyle(fontSize: 12, color: accent.primary),
               ),
             ],

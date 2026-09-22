@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
 import 'artwork.dart';
 import 'song_menu.dart';
@@ -41,7 +41,7 @@ class SongTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final PlaybackService playback = context.watch<PlaybackService>();
     final LibraryService library = context.watch<LibraryService>();
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
 
     final bool isCurrent = playback.current?.id == song.id;
     final bool liked = library.isLiked(song.id);
@@ -57,7 +57,7 @@ class SongTile extends StatelessWidget {
         onTap: onTap ?? () => playback.playSong(song),
         onLongPress: onLongPress ??
             (showMenu ? () => showSongSheet(context, song) : null),
-        borderRadius: BorderRadius.circular(SidifyTheme.radiusMd),
+        borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: dense ? 12 : 14,
@@ -73,7 +73,7 @@ class SongTile extends StatelessWidget {
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: isCurrent ? accent.primary : SidifyColors.textFaint,
+                      color: isCurrent ? accent.primary : SaxifyColors.textFaint,
                     ),
                   ),
                 ),
@@ -117,7 +117,7 @@ class SongTile extends StatelessWidget {
                       style: TextStyle(
                         fontSize: dense ? 13.5 : 14.5,
                         fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
-                        color: isCurrent ? accent.primary : SidifyColors.textPrimary,
+                        color: isCurrent ? accent.primary : SaxifyColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -126,7 +126,7 @@ class SongTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontSize: 12, color: SidifyColors.textMuted),
+                          fontSize: 12, color: SaxifyColors.textMuted),
                     ),
                   ],
                 ),
@@ -137,7 +137,7 @@ class SongTile extends StatelessWidget {
                 icon: Icon(
                   liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                   size: 19,
-                  color: liked ? accent.primary : SidifyColors.textFaint,
+                  color: liked ? accent.primary : SaxifyColors.textFaint,
                 ),
                 onPressed: () => library.toggleLike(song),
               ),
@@ -146,7 +146,7 @@ class SongTile extends StatelessWidget {
                   tooltip: 'More',
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.more_horiz_rounded,
-                      size: 20, color: SidifyColors.textFaint),
+                      size: 20, color: SaxifyColors.textFaint),
                   onPressed: () => showSongSheet(context, song),
                 ),
             ],
@@ -174,7 +174,7 @@ class QueueTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
@@ -186,14 +186,14 @@ class QueueTile extends StatelessWidget {
         style: TextStyle(
           fontSize: 13.5,
           fontWeight: FontWeight.w600,
-          color: isPlaying ? accent.primary : SidifyColors.textPrimary,
+          color: isPlaying ? accent.primary : SaxifyColors.textPrimary,
         ),
       ),
       subtitle: Text(
         song.artist,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 11.5, color: SidifyColors.textMuted),
+        style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -202,7 +202,7 @@ class QueueTile extends StatelessWidget {
             Icon(Icons.graphic_eq_rounded, size: 18, color: accent.primary),
           IconButton(
             icon: const Icon(Icons.close_rounded,
-                size: 18, color: SidifyColors.textFaint),
+                size: 18, color: SaxifyColors.textFaint),
             onPressed: onRemove,
           ),
         ],

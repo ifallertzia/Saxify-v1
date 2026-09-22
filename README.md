@@ -1,8 +1,8 @@
 # Saxify 
 
-Sidify — *Stream beyond limits.* A neon, YouTube-powered music player built with
-Flutter. The frontend is a faithful recreation of the Sidify web app
-([sidify.vercel.app](https://sidify.vercel.app)); the playback engine streams audio
+Saxify — *Stream beyond limits.* A neon, YouTube-powered music player built with
+Flutter. The frontend is a faithful recreation of the Saxify web app
+([saxify.vercel.app](https://saxify.vercel.app)); the playback engine streams audio
 straight from YouTube with resilient multi-client stream resolution.
 
 ## Features
@@ -29,8 +29,40 @@ flutter run
 ```
 CI builds a release APK on every push / PR (see `.github/workflows/build_apk.yml`).
 
+## v2
+
+Music search, stream resolution and the existing player are unchanged. New
+pieces sit beside them.
+
+- Playlist codes talk to `https://saxifyappbackend-for-playlist.onrender.com`.
+- Universal Downloader is a separate backend (`https://saxify-downloader.onrender.com`,
+  overridable in Settings). It is not a replacement for music search.
+- YouTube video download stays refused. Private, login and paywalled links are refused.
+- Package id is `com.saxify.app`. It will not install over the old `com.sidify.app`.
+  Restore playlists with a cloud code after installing the new app.
+- Downloads land in `Download/Saxify/` with a `_saxify` filename suffix.
+- Three unfinished launches open safe mode and skip notification and recommendation init.
+
+### Backend you must deploy
+
+Playlist host:
+
+- `POST /playlist` with `{title, songs, app}` and `POST /playlist/all` with `{title, playlists, app}`.
+- Respond `200` or `201` with `id` or `code`.
+- `GET /playlist/:code` for one playlist. `GET /playlist/all/:code` for a full library.
+  The app falls back to the single-playlist route if bulk import is not deployed yet.
+- Allow header `X-Saxify-Client: flutter`.
+
+Downloader host (name the app **Saxify Downloader**, version **1.1.0**):
+
+- `GET /api/health` with `status`, `app`, `version`, `ffmpeg`, `yt_dlp`.
+- `POST /api/fetch-info` with `{url}`.
+- `GET /api/download?url=&type=&format_id=` and support HTTP Range.
+- Allow header `X-Saxify-Client: flutter`.
+- Do not add a YouTube-video download bypass. The app refuses those links itself.
+
 ## In-app updates (Phase 2)
-On launch and via Settings → "Check for updates", Sidify compares its version to
+On launch and via Settings → "Check for updates", Saxify compares its version to
 GitHub Releases (`releases/latest`) and offers an in-app APK download + install
 (`REQUEST_INSTALL_PACKAGES`), so users never need the browser again.
 

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/models/artist.dart';
 import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
+import '../../core/services/music_download_service.dart';
 import '../../core/services/playback_service.dart';
-import '../../core/services/youtube_service.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
-import '../artist/artist_page.dart';
+import '../artist/artist_router.dart';
+import '../downloads/storage_permission.dart';
 import 'add_to_playlist_sheet.dart';
 import 'artwork.dart';
 
@@ -29,31 +29,33 @@ class _SongSheet extends StatelessWidget {
   final Song song;
 
   Future<void> _openArtist(BuildContext context) async {
-    final NavigatorState navigator = Navigator.of(context);
-    final YoutubeService youtube = context.read<YoutubeService>();
+    await openArtistByName(
+      context,
+      name: song.artist,
+      channelId: song.channelId,
+    );
+  }
+
+  Future<void> _download(BuildContext context) async {
+    final bool allowed = await StoragePermission.ensure(context);
+    if (!allowed || !context.mounted) return;
+    final PlaybackService playback = context.read<PlaybackService>();
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-
-    String? channelId = song.channelId;
-    String artistName = song.artist;
-
-    if (channelId == null || channelId.isEmpty) {
-      final ArtistRef? artist = await youtube.artistForVideo(song.id);
-      if (artist != null) {
-        channelId = artist.channelId;
-        artistName = artist.name;
-      }
-    }
-
-    if (channelId == null || channelId.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Could not find this artist right now')),
-      );
-      return;
-    }
-    navigator.push(MaterialPageRoute<void>(
-      builder: (BuildContext c) =>
-          ArtistPage(channelId: channelId!, fallbackName: artistName),
-    ));
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Saving to Download/Saxify. Playback keeps going.')),
+    );
+    final MusicDownloadJob job =
+        await context.read<MusicDownloadService>().enqueue(song, playback);
+    if (!context.mounted) return;
+    final String message = switch (job.phase) {
+      MusicDownloadPhase.done => 'Song Downloads folder mein save ho gaya!',
+      MusicDownloadPhase.failed => job.error ?? 'Could not save that song. Playback keeps going.',
+      MusicDownloadPhase.cancelled => 'Download cancelled. Playback keeps going.',
+      _ => 'Saving to Download/Saxify. Playback keeps going.',
+    };
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -66,9 +68,9 @@ class _SongSheet extends StatelessWidget {
       top: false,
       child: Container(
         decoration: const BoxDecoration(
-          color: SidifyColors.surface,
+          color: SaxifyColors.surface,
           borderRadius:
-              BorderRadius.vertical(top: Radius.circular(SidifyTheme.radiusLg)),
+              BorderRadius.vertical(top: Radius.circular(SaxifyTheme.radiusLg)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -78,7 +80,7 @@ class _SongSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: SidifyColors.border,
+                color: SaxifyColors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -105,7 +107,7 @@ class _SongSheet extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              fontSize: 12, color: SidifyColors.textMuted),
+                              fontSize: 12, color: SaxifyColors.textMuted),
                         ),
                       ],
                     ),
@@ -166,6 +168,15 @@ class _SongSheet extends StatelessWidget {
                 _openArtist(context);
               },
             ),
+            _Action(
+              icon: Icons.download_rounded,
+              label: 'Download song',
+              onTap: () {
+                final BuildContext host = Navigator.of(context).context;
+                Navigator.of(context).pop();
+                _download(host);
+              },
+            ),
             const SizedBox(height: 12),
           ],
         ),
@@ -191,7 +202,7 @@ class _Action extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onTap,
-      leading: Icon(icon, size: 21, color: SidifyColors.textSecondary),
+      leading: Icon(icon, size: 21, color: SaxifyColors.textSecondary),
       title: Text(label,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 22),

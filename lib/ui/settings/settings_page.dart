@@ -5,16 +5,22 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/branding.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
 import '../../core/services/settings_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/utils/format.dart';
 import '../widgets/neon.dart';
-import '../widgets/sidify_logo.dart';
+import '../widgets/saxify_logo.dart';
+import '../downloads/music_downloads_page.dart';
+import '../player/equalizer_page.dart';
 import 'background_guide_sheet.dart';
+import 'backup_sheet.dart';
+import 'diagnostics_page.dart';
+import 'playlist_sync_sheet.dart';
 import 'update_dialog.dart';
 
 /// Settings — the same panels the web app shows.
@@ -33,7 +39,7 @@ class SettingsPage extends StatelessWidget {
             pinned: true,
             title: Text('Settings',
                 style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
-            backgroundColor: SidifyColors.background,
+            backgroundColor: SaxifyColors.background,
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 160),
@@ -51,7 +57,7 @@ class SettingsPage extends StatelessWidget {
                   trailing: Text(
                     settings.displayName,
                     style: const TextStyle(
-                        fontSize: 13, color: SidifyColors.textSecondary),
+                        fontSize: 13, color: SaxifyColors.textSecondary),
                   ),
                   onTap: () => _editText(
                     context,
@@ -67,7 +73,7 @@ class SettingsPage extends StatelessWidget {
                   trailing: Text(
                     settings.email,
                     style: const TextStyle(
-                        fontSize: 13, color: SidifyColors.textSecondary),
+                        fontSize: 13, color: SaxifyColors.textSecondary),
                   ),
                   onTap: () => _editText(
                     context,
@@ -79,21 +85,63 @@ class SettingsPage extends StatelessWidget {
                 _SettingTile(
                   icon: Icons.upload_file_rounded,
                   title: 'Backup library',
-                  subtitle: 'Copy likes, playlists, history & settings as JSON',
+                  subtitle: 'Copy JSON, or paste a backup to merge or replace',
                   trailing: const Icon(Icons.chevron_right_rounded,
-                      color: SidifyColors.textFaint),
-                  onTap: () async {
-                    await Clipboard.setData(
-                        ClipboardData(text: library.exportBackup()));
-                    if (!context.mounted) return;
-                    _toast(context, 'Library backup copied to clipboard');
-                  },
+                      color: SaxifyColors.textFaint),
+                  onTap: () => showBackupSheet(context, library),
+                ),
+                _SettingTile(
+                  icon: Icons.cloud_upload_outlined,
+                  title: 'Generate all playlist codes',
+                  subtitle: 'Copies a cloud code to the clipboard',
+                  onTap: () => shareAllPlaylistCodes(context),
+                ),
+                _SettingTile(
+                  icon: Icons.cloud_download_outlined,
+                  title: 'Import playlist code',
+                  subtitle: 'Paste a code to restore playlists',
+                  onTap: () => showImportCodeSheet(context),
+                ),
+                _SwitchTile(
+                  icon: Icons.sync_rounded,
+                  title: 'Auto-sync playlists',
+                  subtitle: 'Saves a fresh cloud code after playlist changes',
+                  value: settings.autoPlaylistSync,
+                  onChanged: settings.setAutoPlaylistSync,
+                ),
+                _SettingTile(
+                  icon: Icons.graphic_eq_rounded,
+                  title: 'Equalizer',
+                  subtitle: 'Uses the current player session',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const EqualizerPage()),
+                  ),
+                ),
+                _SettingTile(
+                  icon: Icons.download_outlined,
+                  title: 'Music downloads',
+                  subtitle: 'Files in Download/Saxify, with delete',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const MusicDownloadsPage()),
+                  ),
+                ),
+                _SettingTile(
+                  icon: Icons.monitor_heart_outlined,
+                  title: 'Downloader diagnostics',
+                  subtitle: 'Backend health, version, boot log',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => DiagnosticsPage(
+                        safeMode: context.read<bool>(),
+                      ),
+                    ),
+                  ),
                 ),
 
                 // ------------------------------------------------ Appearance
                 const _PanelHeader(
                   title: 'Appearance & Theme',
-                  subtitle: 'Make Sidify unmistakably yours',
+                  subtitle: 'Make Saxify unmistakably yours',
                 ),
                 const _ThemePanel(),
 
@@ -154,14 +202,14 @@ class SettingsPage extends StatelessWidget {
                 // ------------------------------------------------ System
                 const _PanelHeader(
                   title: 'System & Device Controls',
-                  subtitle: 'How Sidify talks to your phone',
+                  subtitle: 'How Saxify talks to your phone',
                 ),
                 _SettingTile(
                   icon: Icons.headphones_battery_rounded,
                   title: 'Instructions to play in background',
                   subtitle: 'Keep the music going with the screen off',
                   trailing: const Icon(Icons.chevron_right_rounded,
-                      color: SidifyColors.textFaint),
+                      color: SaxifyColors.textFaint),
                   onTap: () => showBackgroundGuideSheet(context),
                 ),
                 _SettingTile(
@@ -173,7 +221,7 @@ class SettingsPage extends StatelessWidget {
                         ? 'Off'
                         : Fmt.clock(context.read<PlaybackService>().sleepRemaining!),
                     style: const TextStyle(
-                        fontSize: 13, color: SidifyColors.textSecondary),
+                        fontSize: 13, color: SaxifyColors.textSecondary),
                   ),
                   onTap: () => _sleepSheet(context),
                 ),
@@ -181,7 +229,7 @@ class SettingsPage extends StatelessWidget {
                 // ------------------------------------------------ Privacy
                 const _PanelHeader(
                   title: 'Privacy & Storage',
-                  subtitle: 'Control what Sidify remembers',
+                  subtitle: 'Control what Saxify remembers',
                 ),
                 _SettingTile(
                   icon: Icons.search_off_rounded,
@@ -213,7 +261,7 @@ class SettingsPage extends StatelessWidget {
                   title: 'Check for updates',
                   subtitle: 'Silent in-app updates from GitHub Releases',
                   trailing: const Icon(Icons.chevron_right_rounded,
-                      color: SidifyColors.textFaint),
+                      color: SaxifyColors.textFaint),
                   onTap: () => checkAndPromptUpdate(context, silent: false),
                 ),
                 const _AboutCard(),
@@ -262,7 +310,7 @@ class SettingsPage extends StatelessWidget {
     final PlaybackService playback = context.read<PlaybackService>();
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: SidifyColors.surface,
+      backgroundColor: SaxifyColors.surface,
       builder: (BuildContext sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -278,7 +326,7 @@ class SettingsPage extends StatelessWidget {
               ),
             ListTile(
               title: const Text('Turn off',
-                  style: TextStyle(color: SidifyColors.danger)),
+                  style: TextStyle(color: SaxifyColors.danger)),
               onTap: () {
                 playback.cancelSleepTimer();
                 Navigator.of(sheetContext).pop();
@@ -327,7 +375,7 @@ class _ThemePanelState extends State<_ThemePanel> {
   @override
   Widget build(BuildContext context) {
     final ThemeController theme = context.watch<ThemeController>();
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
 
     return NeonCard(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -347,12 +395,12 @@ class _ThemePanelState extends State<_ThemePanel> {
                     const Text(
                       'Paints the neon across the whole app',
                       style: TextStyle(
-                          fontSize: 12, color: SidifyColors.textMuted),
+                          fontSize: 12, color: SaxifyColors.textMuted),
                     ),
                   ],
                 ),
               ),
-              SidifyLogo(size: 40, accent: accent),
+              SaxifyLogo(size: 40, accent: accent),
             ],
           ),
           const SizedBox(height: 16),
@@ -360,7 +408,7 @@ class _ThemePanelState extends State<_ThemePanel> {
             spacing: 10,
             runSpacing: 10,
             children: <Widget>[
-              for (final SidifyAccent option in SidifyAccents.all)
+              for (final SaxifyAccent option in SaxifyAccents.all)
                 _AccentSwatch(
                   accent: option,
                   selected: option.id == accent.id,
@@ -381,7 +429,7 @@ class _ThemePanelState extends State<_ThemePanel> {
                   ? 'Switching every ${theme.rotateInterval.inMinutes > 0 ? '${theme.rotateInterval.inMinutes} min' : '${theme.rotateInterval.inSeconds}s'} · next in ${theme.secondsUntilNextSwitch()}s'
                   : 'Pick a colour above and it stays',
               style:
-                  const TextStyle(fontSize: 12, color: SidifyColors.textMuted),
+                  const TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
             ),
           ),
           if (theme.autoRotate)
@@ -421,7 +469,7 @@ class _AccentSwatch extends StatelessWidget {
     required this.onTap,
   });
 
-  final SidifyAccent accent;
+  final SaxifyAccent accent;
   final bool selected;
   final VoidCallback onTap;
 
@@ -438,12 +486,12 @@ class _AccentSwatch extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? accent.primary : SidifyColors.border,
+              color: selected ? accent.primary : SaxifyColors.border,
               width: selected ? 1.6 : 1,
             ),
             color: selected
                 ? accent.primary.withValues(alpha: 0.10)
-                : SidifyColors.surfaceAlt,
+                : SaxifyColors.surfaceAlt,
           ),
           child: Column(
             children: <Widget>[
@@ -473,7 +521,7 @@ class _AccentSwatch extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? accent.primary : SidifyColors.textMuted,
+                  color: selected ? accent.primary : SaxifyColors.textMuted,
                 ),
               ),
             ],
@@ -490,7 +538,7 @@ class _AboutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     return NeonCard(
       glow: true,
       padding: const EdgeInsets.all(18),
@@ -499,18 +547,18 @@ class _AboutCard extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              const SidifyLogo(size: 40),
+              const SaxifyLogo(size: 40),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    GradientText('Sidify',
+                    GradientText(SaxifyBranding.appName,
                         style: GoogleFonts.spaceGrotesk(
                             fontSize: 18, fontWeight: FontWeight.w700)),
                     const Text('Stream beyond limits',
                         style: TextStyle(
-                            fontSize: 11.5, color: SidifyColors.textMuted)),
+                            fontSize: 11.5, color: SaxifyColors.textMuted)),
                   ],
                 ),
               ),
@@ -518,11 +566,11 @@ class _AboutCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           const Text(
-            'Sidify is a clean and simple music experience built for people who '
+            'Saxify is a clean and simple music experience built for people who '
             'want to discover and listen to music without unnecessary '
             'distractions. Play ad-free music with a focused and minimal '
             'listening experience.',
-            style: TextStyle(fontSize: 12.5, height: 1.55, color: SidifyColors.textSecondary),
+            style: TextStyle(fontSize: 12.5, height: 1.55, color: SaxifyColors.textSecondary),
           ),
           const SizedBox(height: 14),
           const Wrap(
@@ -549,9 +597,9 @@ class _AboutCard extends StatelessWidget {
                   children: <Widget>[
                     Text('App version',
                         style: TextStyle(
-                            fontSize: 12.5, color: SidifyColors.textSecondary)),
+                            fontSize: 12.5, color: SaxifyColors.textSecondary)),
                     SizedBox(height: 2),
-                    Text('Sidify · 1.1.0',
+                    Text('Saxify · ${SaxifyBranding.versionLabel}',
                         style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w700)),
                   ],
@@ -560,13 +608,13 @@ class _AboutCard extends StatelessWidget {
               TextButton(
                 onPressed: () => showAboutDialog(
                   context: context,
-                  applicationName: 'Sidify',
-                  applicationVersion: '1.1.0',
-                  applicationIcon: const SidifyLogo(size: 46),
+                  applicationName: 'Saxify',
+                  applicationVersion: SaxifyBranding.versionLabel,
+                  applicationIcon: const SaxifyLogo(size: 46),
                   children: <Widget>[
                     const Text(
-                      'Sidify streams audio from YouTube. All artwork and '
-                      'metadata belong to their respective owners. Sidify is not '
+                      'Saxify streams audio from YouTube. All artwork and '
+                      'metadata belong to their respective owners. Saxify is not '
                       'affiliated with, or endorsed by, any third-party streaming '
                       'service.',
                       style: TextStyle(fontSize: 12.5, height: 1.5),
@@ -584,7 +632,7 @@ class _AboutCard extends StatelessWidget {
             title: 'Contact / Report a problem',
             subtitle: 'dastaanenajdik@gmail.com',
             trailing: const Icon(Icons.chevron_right_rounded,
-                color: SidifyColors.textFaint),
+                color: SaxifyColors.textFaint),
             onTap: () async {
               await Clipboard.setData(
                   const ClipboardData(text: 'dastaanenajdik@gmail.com'));
@@ -611,11 +659,11 @@ class _FeatureChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: SidifyColors.surfaceAlt,
-        border: Border.all(color: SidifyColors.border),
+        color: SaxifyColors.surfaceAlt,
+        border: Border.all(color: SaxifyColors.border),
       ),
       child: Text(label,
-          style: const TextStyle(fontSize: 10.5, color: SidifyColors.textSecondary)),
+          style: const TextStyle(fontSize: 10.5, color: SaxifyColors.textSecondary)),
     );
   }
 }
@@ -640,7 +688,7 @@ class _PanelHeader extends StatelessWidget {
           const SizedBox(height: 3),
           Text(subtitle,
               style: const TextStyle(
-                  fontSize: 12, color: SidifyColors.textMuted)),
+                  fontSize: 12, color: SaxifyColors.textMuted)),
         ],
       ),
     );
@@ -689,7 +737,7 @@ class _SettingTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(subtitle,
                     style: const TextStyle(
-                        fontSize: 11.5, color: SidifyColors.textMuted)),
+                        fontSize: 11.5, color: SaxifyColors.textMuted)),
               ],
             ),
           ),
@@ -741,7 +789,7 @@ class _SwitchTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(subtitle,
                     style: const TextStyle(
-                        fontSize: 11.5, color: SidifyColors.textMuted)),
+                        fontSize: 11.5, color: SaxifyColors.textMuted)),
               ],
             ),
           ),
@@ -771,7 +819,7 @@ class _ChoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     return NeonCard(
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       child: Column(
@@ -799,7 +847,7 @@ class _ChoiceTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(subtitle,
                         style: const TextStyle(
-                            fontSize: 11.5, color: SidifyColors.textMuted)),
+                            fontSize: 11.5, color: SaxifyColors.textMuted)),
                   ],
                 ),
               ),
@@ -817,7 +865,7 @@ class _ChoiceTile extends StatelessWidget {
                   labelStyle: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: choice == value ? accent.primary : SidifyColors.textMuted,
+                    color: choice == value ? accent.primary : SaxifyColors.textMuted,
                   ),
                 ),
             ],

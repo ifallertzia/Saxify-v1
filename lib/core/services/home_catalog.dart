@@ -29,7 +29,7 @@ class HomeCatalog extends ChangeNotifier {
   List<Song> trending = <Song>[];
   List<Song> recommended = <Song>[];
 
-  /// Shelf data straight off sidify.vercel.app.
+  /// Shelf data straight off saxify.vercel.app.
   static const List<AlbumCard> newReleases = <AlbumCard>[
     AlbumCard(
       query: 'new songs 2026 official',

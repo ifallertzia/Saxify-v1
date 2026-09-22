@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 
 /// Text painted with the live accent gradient — the site's neon headlines.
 class GradientText extends StatelessWidget {
@@ -10,11 +10,11 @@ class GradientText extends StatelessWidget {
 
   final String text;
   final TextStyle? style;
-  final SidifyAccent? accent;
+  final SaxifyAccent? accent;
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent a = accent ?? context.accent;
+    final SaxifyAccent a = accent ?? context.accent;
     return ShaderMask(
       shaderCallback: (Rect bounds) => a.horizontalGradient.createShader(bounds),
       blendMode: BlendMode.srcIn,
@@ -59,14 +59,14 @@ class SectionHeader extends StatelessWidget {
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 19,
                       fontWeight: FontWeight.w700,
-                      color: SidifyColors.textPrimary,
+                      color: SaxifyColors.textPrimary,
                       letterSpacing: -0.3,
                     )),
                 if (subtitle != null) ...<Widget>[
                   const SizedBox(height: 3),
                   Text(subtitle!,
                       style: const TextStyle(
-                          fontSize: 12.5, color: SidifyColors.textMuted)),
+                          fontSize: 12.5, color: SaxifyColors.textMuted)),
                 ],
               ],
             ),
@@ -95,7 +95,7 @@ class NeonCard extends StatelessWidget {
     required this.child,
     this.onTap,
     this.padding = const EdgeInsets.all(14),
-    this.radius = SidifyTheme.radiusMd,
+    this.radius = SaxifyTheme.radiusMd,
     this.background,
     this.borderColor,
     this.glow = false,
@@ -111,9 +111,9 @@ class NeonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color border = borderColor ?? SidifyColors.border;
+    final Color border = borderColor ?? SaxifyColors.border;
     final BoxDecoration decoration = BoxDecoration(
-      color: background ?? SidifyColors.card,
+      color: background ?? SaxifyColors.card,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(color: border),
       boxShadow: glow
@@ -161,7 +161,7 @@ class NeonButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent a = context.accent;
+    final SaxifyAccent a = context.accent;
     final double height = compact ? 38 : 48;
 
     final Widget content = Row(
@@ -184,7 +184,7 @@ class NeonButton extends StatelessWidget {
       ],
     );
 
-    final BorderRadius radius = BorderRadius.circular(SidifyTheme.radiusXl);
+    final BorderRadius radius = BorderRadius.circular(SaxifyTheme.radiusXl);
 
     return SizedBox(
       width: expand ? double.infinity : null,
@@ -242,7 +242,7 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent a = context.accent;
+    final SaxifyAccent a = context.accent;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
@@ -273,7 +273,7 @@ class EmptyState extends StatelessWidget {
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: SidifyColors.textPrimary,
+                color: SaxifyColors.textPrimary,
               ),
             ),
             if (message != null) ...<Widget>[
@@ -282,7 +282,7 @@ class EmptyState extends StatelessWidget {
                 message!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    fontSize: 13, color: SidifyColors.textMuted, height: 1.5),
+                    fontSize: 13, color: SaxifyColors.textMuted, height: 1.5),
               ),
             ],
             if (actionLabel != null) ...<Widget>[
@@ -346,7 +346,7 @@ class _ShimmerBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: SidifyColors.surfaceAlt,
+        color: SaxifyColors.surfaceAlt,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -367,8 +367,8 @@ class NeonDivider extends StatelessWidget {
         gradient: LinearGradient(
           colors: <Color>[
             context.accent.primary.withValues(alpha: 0.5),
-            SidifyColors.border,
-            SidifyColors.border.withValues(alpha: 0.0),
+            SaxifyColors.border,
+            SaxifyColors.border.withValues(alpha: 0.0),
           ],
         ),
       ),

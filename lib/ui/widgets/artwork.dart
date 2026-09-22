@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/sidify_theme.dart';
+import '../../config/branding.dart';
+import '../../core/services/artwork_cache.dart';
+import '../../core/theme/saxify_theme.dart';
 
-/// Network artwork with a neon placeholder and graceful failure.
+/// Network artwork that reuses one [ImageProvider] everywhere.
+///
+/// A route push used to rebuild [Image.network] and flash white. The shared
+/// provider plus the Saxify logo fallback keeps the sleeve visible.
 class Artwork extends StatelessWidget {
   const Artwork({
     super.key,
@@ -10,7 +15,7 @@ class Artwork extends StatelessWidget {
     this.size,
     this.width,
     this.height,
-    this.radius = SidifyTheme.radiusSm,
+    this.radius = SaxifyTheme.radiusSm,
     this.fit = BoxFit.cover,
     this.fallbackIcon = Icons.music_note_rounded,
   });
@@ -34,30 +39,19 @@ class Artwork extends StatelessWidget {
       child: SizedBox(
         width: w,
         height: h,
-        child: url.isEmpty
-            ? placeholder
-            : Image.network(
-                url,
-                width: w,
-                height: h,
-                fit: fit,
-                gaplessPlayback: true,
-                errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                    placeholder,
-                loadingBuilder: (BuildContext c, Widget child,
-                    ImageChunkEvent? progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    color: SidifyColors.surfaceAlt,
-                    alignment: Alignment.center,
-                    child: const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                },
-              ),
+        child: Image(
+          image: ArtworkCache.providerFor(url),
+          width: w,
+          height: h,
+          fit: fit,
+          gaplessPlayback: true,
+          errorBuilder: (BuildContext context, Object error, StackTrace? stack) =>
+              placeholder,
+          frameBuilder: (BuildContext context, Widget child, int? frame, bool sync) {
+            if (sync || frame != null) return child;
+            return placeholder;
+          },
+        ),
       ),
     );
   }
@@ -71,17 +65,25 @@ class _Fallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[Color(0xFF221C36), Color(0xFF141121)],
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[Color(0xFF221C36), Color(0xFF141121)],
+            ),
+          ),
         ),
-      ),
-      child: Center(
-        child: Icon(icon, color: SidifyColors.textFaint, size: radius * 1.6),
-      ),
+        Image.asset(
+          SaxifyBranding.logoAsset,
+          fit: BoxFit.contain,
+          errorBuilder: (BuildContext context, Object error, StackTrace? stack) =>
+              Icon(icon, color: SaxifyColors.textFaint, size: radius * 1.6),
+        ),
+      ],
     );
   }
 }

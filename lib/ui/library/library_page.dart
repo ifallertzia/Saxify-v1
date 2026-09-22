@@ -7,10 +7,11 @@ import '../../core/models/playlist.dart';
 import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
 import '../artist/artist_page.dart';
+import '../settings/playlist_sync_sheet.dart';
 import '../widgets/artwork.dart';
 import '../widgets/neon.dart';
 import '../widgets/song_tile.dart';
@@ -39,14 +40,14 @@ class LibraryPage extends StatelessWidget {
                     fontSize: 26,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.6,
-                    color: SidifyColors.textPrimary,
+                    color: SaxifyColors.textPrimary,
                   ),
                 ),
               ),
               TabBar(
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
-                dividerColor: SidifyColors.border,
+                dividerColor: SaxifyColors.border,
                 tabs: <Widget>[
                   Tab(text: 'Liked'),
                   Tab(text: 'Playlists'),
@@ -165,7 +166,7 @@ class _PlaylistsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final LibraryService library = context.watch<LibraryService>();
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 140),
@@ -196,7 +197,7 @@ class _PlaylistsTab extends StatelessWidget {
                     const Text(
                       'Build your own universe of sound',
                       style: TextStyle(
-                          fontSize: 12, color: SidifyColors.textMuted),
+                          fontSize: 12, color: SaxifyColors.textMuted),
                     ),
                   ],
                 ),
@@ -204,6 +205,23 @@ class _PlaylistsTab extends StatelessWidget {
               Icon(Icons.chevron_right_rounded, color: accent.primary),
             ],
           ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: TextButton(
+                onPressed: () => shareAllPlaylistCodes(context),
+                child: const Text('Generate all'),
+              ),
+            ),
+            Expanded(
+              child: TextButton(
+                onPressed: () => showImportCodeSheet(context),
+                child: const Text('Import code'),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         if (library.playlists.isEmpty)
@@ -242,14 +260,14 @@ class _PlaylistsTab extends StatelessWidget {
                           Text(
                             '${playlist.count} songs · ${Fmt.date(playlist.createdAt)}',
                             style: const TextStyle(
-                                fontSize: 11.5, color: SidifyColors.textMuted),
+                                fontSize: 11.5, color: SaxifyColors.textMuted),
                           ),
                         ],
                       ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.more_vert_rounded,
-                          size: 20, color: SidifyColors.textFaint),
+                          size: 20, color: SaxifyColors.textFaint),
                       onPressed: () => _playlistMenu(context, library, playlist),
                     ),
                   ],
@@ -264,7 +282,7 @@ class _PlaylistsTab extends StatelessWidget {
       BuildContext context, LibraryService library, Playlist playlist) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: SidifyColors.surface,
+      backgroundColor: SaxifyColors.surface,
       builder: (BuildContext sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -308,9 +326,9 @@ class _PlaylistsTab extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline_rounded,
-                  color: SidifyColors.danger),
+                  color: SaxifyColors.danger),
               title: const Text('Delete playlist',
-                  style: TextStyle(color: SidifyColors.danger)),
+                  style: TextStyle(color: SaxifyColors.danger)),
               onTap: () async {
                 Navigator.of(sheetContext).pop();
                 final bool? confirmed = await showDialog<bool>(
@@ -373,7 +391,7 @@ class _SongsTab extends StatelessWidget {
               Expanded(
                 child: Text('${songs.length} saved songs',
                     style: const TextStyle(
-                        fontSize: 12.5, color: SidifyColors.textMuted)),
+                        fontSize: 12.5, color: SaxifyColors.textMuted)),
               ),
               TextButton.icon(
                 onPressed: () => playback.playQueue(songs),
@@ -427,9 +445,9 @@ class _ArtistsTab extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text(artist.subscribers ?? 'Artist',
               style: const TextStyle(
-                  fontSize: 11.5, color: SidifyColors.textMuted)),
+                  fontSize: 11.5, color: SaxifyColors.textMuted)),
           trailing: const Icon(Icons.chevron_right_rounded,
-              color: SidifyColors.textFaint),
+              color: SaxifyColors.textFaint),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
               builder: (BuildContext p) => ArtistPage(
@@ -478,7 +496,7 @@ class _HistoryTab extends StatelessWidget {
                 child: Text(
                   '${library.history.length} recently played',
                   style: const TextStyle(
-                      fontSize: 12.5, color: SidifyColors.textMuted),
+                      fontSize: 12.5, color: SaxifyColors.textMuted),
                 ),
               ),
               TextButton.icon(
@@ -489,7 +507,7 @@ class _HistoryTab extends StatelessWidget {
               IconButton(
                 tooltip: 'Clear history',
                 icon: const Icon(Icons.delete_sweep_rounded,
-                    size: 20, color: SidifyColors.textFaint),
+                    size: 20, color: SaxifyColors.textFaint),
                 onPressed: library.clearHistory,
               ),
             ],
@@ -529,7 +547,7 @@ class _CollectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 18),
       child: Column(
@@ -542,7 +560,7 @@ class _CollectionHeader extends StatelessWidget {
                 width: 112,
                 height: 112,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(SidifyTheme.radiusMd),
+                  borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
                   gradient: accent.gradient,
                   boxShadow: <BoxShadow>[
                     BoxShadow(
@@ -556,7 +574,7 @@ class _CollectionHeader extends StatelessWidget {
                 child: coverUrl.isEmpty
                     ? Icon(icon, size: 40, color: Colors.black87)
                     : ClipRRect(
-                        borderRadius: BorderRadius.circular(SidifyTheme.radiusMd),
+                        borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
                         child: Stack(
                           fit: StackFit.expand,
                           children: <Widget>[
@@ -595,7 +613,7 @@ class _CollectionHeader extends StatelessWidget {
                     const SizedBox(height: 5),
                     Text(subtitle,
                         style: const TextStyle(
-                            fontSize: 12, color: SidifyColors.textMuted)),
+                            fontSize: 12, color: SaxifyColors.textMuted)),
                   ],
                 ),
               ),
@@ -615,8 +633,8 @@ class _CollectionHeader extends StatelessWidget {
                 onPressed: onShuffle,
                 icon: const Icon(Icons.shuffle_rounded),
                 style: IconButton.styleFrom(
-                  backgroundColor: SidifyColors.surfaceAlt,
-                  foregroundColor: SidifyColors.textPrimary,
+                  backgroundColor: SaxifyColors.surfaceAlt,
+                  foregroundColor: SaxifyColors.textPrimary,
                   minimumSize: const Size(48, 48),
                 ),
               ),

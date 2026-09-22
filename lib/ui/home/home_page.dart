@@ -6,22 +6,25 @@ import '../../core/models/album_card.dart';
 import '../../core/models/artist.dart';
 import '../../core/models/song.dart';
 import '../../core/services/home_catalog.dart';
+import '../../core/services/recommendation_service.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
 import '../../core/services/settings_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
 import '../album/album_page.dart';
-import '../artist/artist_page.dart';
+import '../artist/artist_router.dart';
+import '../../data/labels.dart';
+import '../brands/brands_page.dart';
 import '../settings/settings_page.dart';
 import '../shell/shell_controller.dart';
 import '../widgets/media_cards.dart';
 import '../widgets/neon.dart';
-import '../widgets/sidify_logo.dart';
+import '../widgets/saxify_logo.dart';
 import '../widgets/song_tile.dart';
 
-/// Home — mirrors sidify.vercel.app: hero greeting, Made for you, Mood & genres,
+/// Home — mirrors saxify.vercel.app: hero greeting, Made for you, Mood & genres,
 /// Trending now, New releases, Top artists and Recommended for you.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -46,18 +49,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _openArtist(ArtistRef artist) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext c) => ArtistPage(
-          channelId: artist.channelId,
-          fallbackName: artist.name,
-          fallbackImageUrl: artist.imageUrl,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final HomeCatalog catalog = context.watch<HomeCatalog>();
@@ -65,7 +56,7 @@ class _HomePageState extends State<HomePage> {
 
     return RefreshIndicator(
       color: context.accent.primary,
-      backgroundColor: SidifyColors.surface,
+      backgroundColor: SaxifyColors.surface,
       onRefresh: () => catalog.load(force: true),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -173,6 +164,15 @@ class _HomePageState extends State<HomePage> {
 
             // ------------------------------------------------ Top artists
             SectionHeader(
+              title: 'Music brands',
+              subtitle: 'Official label channels',
+              actionLabel: 'All',
+              onAction: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const BrandsPage()),
+              ),
+            ),
+            const _BrandRow(),
+            SectionHeader(
               title: 'Top artists',
               subtitle: 'Commanding the charts right now',
               actionLabel: 'Library',
@@ -186,12 +186,17 @@ class _HomePageState extends State<HomePage> {
                 return ArtistBubble(
                   name: artist.name,
                   imageUrl: artist.imageUrl,
-                  onTap: () => _openArtist(artist),
+                  onTap: () => openArtistByName(
+                        context,
+                        name: artist.name,
+                        channelId: artist.channelId,
+                      ),
                 );
               },
             ),
 
             // ------------------------------------------------ Recommended
+            const _SmartRails(),
             if (catalog.recommended.isNotEmpty) ...<Widget>[
               const SectionHeader(
                 title: 'Recommended for you',
@@ -235,7 +240,7 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
       child: Row(
         children: <Widget>[
-          const SidifyWordmark(logoSize: 32, fontSize: 20, showSubtitle: true),
+          const SaxifyWordmark(logoSize: 32, fontSize: 20, showSubtitle: true),
           const Spacer(),
           IconButton(
             tooltip: 'Your library',
@@ -243,14 +248,14 @@ class _TopBar extends StatelessWidget {
               isLabelVisible: library.likedSongs.isNotEmpty,
               backgroundColor: context.accent.primary,
               child: const Icon(Icons.favorite_border_rounded,
-                  color: SidifyColors.textSecondary),
+                  color: SaxifyColors.textSecondary),
             ),
             onPressed: () => context.read<ShellController>().goLibrary(),
           ),
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined,
-                color: SidifyColors.textSecondary),
+                color: SaxifyColors.textSecondary),
             onPressed: onSettings,
           ),
         ],
@@ -266,7 +271,7 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     final PlaybackService playback = context.read<PlaybackService>();
     final HomeCatalog catalog = context.read<HomeCatalog>();
 
@@ -275,14 +280,14 @@ class _Hero extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(SidifyTheme.radiusLg),
+          borderRadius: BorderRadius.circular(SaxifyTheme.radiusLg),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: <Color>[
               accent.primary.withValues(alpha: 0.26),
               accent.secondary.withValues(alpha: 0.10),
-              SidifyColors.card,
+              SaxifyColors.card,
             ],
           ),
           border: Border.all(color: accent.primary.withValues(alpha: 0.22)),
@@ -320,7 +325,7 @@ class _Hero extends StatelessWidget {
                   fontSize: 25,
                   height: 1.18,
                   fontWeight: FontWeight.w700,
-                  color: SidifyColors.textPrimary,
+                  color: SaxifyColors.textPrimary,
                 ),
                 children: <InlineSpan>[
                   TextSpan(text: '${Fmt.greeting()}, '),
@@ -330,7 +335,7 @@ class _Hero extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w600,
-                      color: SidifyColors.textSecondary,
+                      color: SaxifyColors.textSecondary,
                     ),
                   ),
                 ],
@@ -341,7 +346,7 @@ class _Hero extends StatelessWidget {
               'Instant search, gapless playback, smart auto-next and a neon '
               'theme that keeps changing — all in one app.',
               style: TextStyle(
-                  fontSize: 12.5, height: 1.55, color: SidifyColors.textMuted),
+                  fontSize: 12.5, height: 1.55, color: SaxifyColors.textMuted),
             ),
             const SizedBox(height: 18),
             Row(
@@ -421,6 +426,77 @@ class _MoodGenresRow extends StatelessWidget {
   }
 }
 
+class _SmartRails extends StatelessWidget {
+  const _SmartRails();
+
+  @override
+  Widget build(BuildContext context) {
+    final RecommendationService reco = context.watch<RecommendationService>();
+    final PlaybackService playback = context.read<PlaybackService>();
+    if (reco.forYou.isEmpty && reco.becauseYouSearched.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      children: <Widget>[
+        if (reco.forYou.isNotEmpty) ...<Widget>[
+          const SectionHeader(
+            title: 'Recommended for you',
+            subtitle: 'On-device mix from what you play and search',
+          ),
+          HorizontalRail(
+            height: 190,
+            itemCount: reco.forYou.length,
+            builder: (BuildContext c, int i) {
+              final Song song = reco.forYou[i];
+              return SongCard(
+                song: song,
+                onTap: () => playback.playQueue(reco.forYou, startIndex: i),
+              );
+            },
+          ),
+        ],
+        if (reco.becauseQuery != null && reco.becauseYouSearched.isNotEmpty) ...<Widget>[
+          SectionHeader(
+            title: 'Because you searched ${reco.becauseQuery}',
+            subtitle: 'Boosted after 2 searches in 3 days',
+          ),
+          for (int i = 0; i < reco.becauseYouSearched.length; i++)
+            SongTile(
+              song: reco.becauseYouSearched[i],
+              onTap: () => playback.playQueue(reco.becauseYouSearched, startIndex: i),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _BrandRow extends StatelessWidget {
+  const _BrandRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: MusicBrands.all.length,
+        separatorBuilder: (BuildContext context, int index) => const SizedBox(width: 8),
+        itemBuilder: (BuildContext context, int i) {
+          final brand = MusicBrands.all[i];
+          return ActionChip(
+            label: Text(brand.name),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => BrandChannelPage(brand: brand)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _WhatsNewCard extends StatelessWidget {
   const _WhatsNewCard();
 
@@ -437,7 +513,7 @@ class _WhatsNewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: NeonCard(
@@ -470,7 +546,7 @@ class _WhatsNewCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    "What's new in Sidify",
+                    "What's new in Saxify",
                     style: GoogleFonts.spaceGrotesk(
                         fontSize: 15, fontWeight: FontWeight.w700),
                   ),
@@ -478,13 +554,13 @@ class _WhatsNewCard extends StatelessWidget {
                   const Text(
                     'Playback, likes and playlists are all fixed',
                     style:
-                        TextStyle(fontSize: 12, color: SidifyColors.textMuted),
+                        TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
                   ),
                 ],
               ),
             ),
             const Icon(Icons.chevron_right_rounded,
-                color: SidifyColors.textFaint),
+                color: SaxifyColors.textFaint),
           ],
         ),
       ),

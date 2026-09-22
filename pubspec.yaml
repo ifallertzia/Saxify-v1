@@ -1,7 +1,7 @@
-name: sidify
-description: Sidify — Stream beyond limits. A neon YouTube-powered music app.
+name: saxify
+description: Saxify — Stream beyond limits. A neon YouTube-powered music app.
 publish_to: 'none'
-version: 1.1.0+2
+version: 2.0.0+3
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
@@ -12,18 +12,26 @@ dependencies:
 
   # --- Playback engine (UNCHANGED behaviour, only re-homed into services) ---
   just_audio: ^0.9.40
+  just_audio_background: ^0.0.1-beta.17
+  audio_service: ^0.18.18
   youtube_explode_dart: ^3.1.0
 
   # --- Frontend only ---
   provider: ^6.1.2
   shared_preferences: ^2.3.2
   google_fonts: ^6.2.1
+  cached_network_image: ^3.4.1
+  url_launcher: ^6.3.1
 
-  # --- Phase 2: in-app updates ---
+  # --- Phase 2: in-app updates, downloads, on-device recommendations ---
   package_info_plus: ^8.0.0
   http: ^1.2.0
   path_provider: ^2.1.0
   open_filex: ^4.7.0
+  dio: ^5.7.0
+  permission_handler: ^11.4.0
+  sqflite: ^2.4.1
+  workmanager: ^0.10.0
 
 dev_dependencies:
   flutter_test:
@@ -32,3 +40,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/saxify_logo.png
+    - assets/images/saxify_splash.png

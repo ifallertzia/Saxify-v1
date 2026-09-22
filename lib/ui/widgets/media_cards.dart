@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/models/song.dart';
 import '../../core/services/playback_service.dart';
-import '../../core/theme/sidify_accents.dart';
-import '../../core/theme/sidify_theme.dart';
+import '../../core/theme/saxify_accents.dart';
+import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
 import 'artwork.dart';
 
@@ -27,7 +27,7 @@ class SongCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final PlaybackService playback = context.watch<PlaybackService>();
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     final bool isCurrent = playback.current?.id == song.id;
 
     return SizedBox(
@@ -36,7 +36,7 @@ class SongCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap ?? () => playback.playSong(song),
-          borderRadius: BorderRadius.circular(SidifyTheme.radiusMd),
+          borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -47,7 +47,7 @@ class SongCard extends StatelessWidget {
                     url: song.thumbnailUrl,
                     width: width,
                     height: width * 0.62,
-                    radius: SidifyTheme.radiusMd,
+                    radius: SaxifyTheme.radiusMd,
                   ),
                   Positioned(
                     right: 8,
@@ -85,7 +85,7 @@ class SongCard extends StatelessWidget {
                   fontSize: 13,
                   height: 1.25,
                   fontWeight: FontWeight.w600,
-                  color: isCurrent ? accent.primary : SidifyColors.textPrimary,
+                  color: isCurrent ? accent.primary : SaxifyColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 3),
@@ -94,7 +94,7 @@ class SongCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style:
-                    const TextStyle(fontSize: 11.5, color: SidifyColors.textMuted),
+                    const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
               ),
             ],
           ),
@@ -107,7 +107,7 @@ class SongCard extends StatelessWidget {
 class _PlayFab extends StatelessWidget {
   const _PlayFab({required this.accent, required this.active});
 
-  final SidifyAccent accent;
+  final SaxifyAccent accent;
   final bool active;
 
   @override
@@ -161,7 +161,7 @@ class AlbumTile extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(SidifyTheme.radiusMd),
+          borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -170,7 +170,7 @@ class AlbumTile extends StatelessWidget {
                 url: coverUrl,
                 width: width,
                 height: width,
-                radius: SidifyTheme.radiusMd,
+                radius: SaxifyTheme.radiusMd,
                 fallbackIcon: Icons.album_rounded,
               ),
               const SizedBox(height: 10),
@@ -181,7 +181,7 @@ class AlbumTile extends StatelessWidget {
                 style: GoogleFonts.spaceGrotesk(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
-                    color: SidifyColors.textPrimary),
+                    color: SaxifyColors.textPrimary),
               ),
               const SizedBox(height: 3),
               Text(
@@ -189,7 +189,7 @@ class AlbumTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style:
-                    const TextStyle(fontSize: 11.5, color: SidifyColors.textMuted),
+                    const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
               ),
             ],
           ),
@@ -224,7 +224,7 @@ class ArtistBubble extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(SidifyTheme.radiusMd),
+          borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
@@ -262,13 +262,13 @@ class ArtistBubble extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
-                      color: SidifyColors.textPrimary),
+                      color: SaxifyColors.textPrimary),
                 ),
               ),
               Text(
                 caption,
                 style:
-                    const TextStyle(fontSize: 10.5, color: SidifyColors.textFaint),
+                    const TextStyle(fontSize: 10.5, color: SaxifyColors.textFaint),
               ),
             ],
           ),
@@ -293,16 +293,16 @@ class MoodChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SidifyAccent accent = context.accent;
+    final SaxifyAccent accent = context.accent;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(SidifyTheme.radiusXl),
+        borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(SidifyTheme.radiusXl),
+            borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
             gradient: LinearGradient(
               colors: <Color>[
                 accent.primary.withValues(alpha: 0.16),
