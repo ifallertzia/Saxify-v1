@@ -42,6 +42,13 @@ jobs:
         shell: bash
         run: set -o pipefail && flutter analyze --no-fatal-infos 2>&1 | tee analyze.log
 
+      # The repo has 3 suites; CI used to skip them entirely. Non-blocking for
+      # now so a flaky test never hides a real build break again.
+      - name: Test (unit + widget)
+        shell: bash
+        run: set -o pipefail && flutter test 2>&1 | tee test.log
+        continue-on-error: true
+
       - name: Build APK (release)
         shell: bash
         run: set -o pipefail && flutter build apk --release 2>&1 | tee build.log
@@ -61,6 +68,22 @@ jobs:
         with:
           name: app-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
+
+      # GitHub truncates what we can read from a failed run, so lift every
+      # compiler error into job annotations + errors.log (readable via the API).
+      - name: Extract compiler errors
+        if: failure()
+        shell: bash
+        run: |
+          {
+            grep -hE "^e: |^w: |error • " analyze.log build.log appbundle.log 2>/dev/null | head -60
+            echo "--- gradle ---"
+            awk '/\* What went wrong/,/^\* Try/' build.log 2>/dev/null | head -30
+          } > errors.log || true
+          cat errors.log
+          head -30 errors.log | while IFS= read -r line; do
+            printf '::error::%s\n' "${line//%/\%}"
+          done
 
       # Always keep the full build log as an artifact on failure
       - name: Upload build log (failure)
@@ -83,12 +106,19 @@ jobs:
             echo "**❌ Build failed on commit \`${GITHUB_SHA::7}\`**"
             echo ''
             echo '```text'
-            tail -80 analyze.log 2>/dev/null || echo "analyze.log missing"
+            sed -n '1,120p' errors.log 2>/dev/null || echo "errors.log missing"
             echo '```'
             echo ''
             echo '```text'
-            tail -80 build.log 2>/dev/null || echo "build.log missing"
+            tail -60 build.log 2>/dev/null || echo "build.log missing"
             echo '```'
+            echo ''
+            echo '<details><summary>flutter test</summary>'
+            echo ''
+            echo '```text'
+            tail -40 test.log 2>/dev/null || echo "test.log missing"
+            echo '```'
+            echo '</details>'
           } > comment.md
           jq -Rs '{body: .}' < comment.md > payload.json
           curl -sS -X POST \

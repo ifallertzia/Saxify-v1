@@ -3,6 +3,7 @@ package com.saxify.app
 import android.app.Activity
 import android.content.ClipData
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
 import android.media.audiofx.Equalizer
 import android.net.Uri
@@ -275,7 +276,7 @@ class SaxifyBridge(private val activity: Activity) {
             levels.add(eq.getBandLevel(i.toShort()).toInt())
         }
         val presets = ArrayList<String>(eq.numberOfPresets.toInt())
-        for (i in 0 until eq.numberOfPresets) {
+        for (i in 0 until eq.numberOfPresets.toInt()) {
             presets.add(eq.getPresetName(i.toShort()))
         }
         return mapOf(
@@ -290,7 +291,7 @@ class SaxifyBridge(private val activity: Activity) {
 
     private fun eqUsePreset(name: String): Boolean {
         val eq = equalizer ?: return false
-        for (i in 0 until eq.numberOfPresets) {
+        for (i in 0 until eq.numberOfPresets.toInt()) {
             if (eq.getPresetName(i.toShort()).equals(name, ignoreCase = true)) {
                 eq.usePreset(i.toShort())
                 return true
@@ -338,12 +339,13 @@ class SaxifyBridge(private val activity: Activity) {
                 .clear()
                 .apply()
             SaxifyBoot.reset(context)
-            val names = listOf(
+            // listOfNotNull: getDatabasePath() is nullable, and a List<File?> would
+            // make exists()/delete() illegal calls.
+            val names = listOfNotNull(
                 File(context.filesDir, "saxify_reco.db"),
                 File(context.getDir("flutter", Context.MODE_PRIVATE), "saxify_reco.db"),
-                File(context.dataDir, "app_flutter/saxify_reco.db"),
                 context.getDatabasePath("saxify_reco.db"),
-            )
+            ).distinct()
             for (file in names) {
                 if (file.exists()) file.delete()
             }
