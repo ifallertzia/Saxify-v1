@@ -16,6 +16,7 @@ class UpdateService {
   /// brief; if it has no releases we fall back to the repo that CI actually
   /// publishes from, so the feature works either way.
   static const List<String> releaseRepos = <String>[
+    'dastaanenajdik/Saxify-v1',
     'dastaanenajdik/saxify-app',
     'dastaanenajdik/testing',
   ];
