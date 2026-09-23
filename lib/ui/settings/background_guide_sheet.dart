@@ -22,30 +22,30 @@ class _BackgroundGuideSheet extends StatelessWidget {
   static const List<(String, String)> _steps = <(String, String)>[
     (
       'Start a song first',
-      'Background audio only keeps running once Saxify is actually playing '
+      'Background audio only keeps running once IfallMusic is actually playing '
           'something. Press play, then lock the screen or switch apps.',
     ),
     (
       'Keep the notification visible',
-      'Do not swipe Saxify away from the notification shade. That is the '
+      'Do not swipe IfallMusic away from the notification shade. That is the '
           'service holding the audio session open — dismissing it can stop '
           'playback on some phones.',
     ),
     (
-      'Turn off battery optimisation for Saxify',
-      'Settings → Apps → Saxify → Battery → choose “Unrestricted” (or “No '
+      'Turn off battery optimisation for IfallMusic',
+      'Settings → Apps → IfallMusic → Battery → choose “Unrestricted” (or “No '
           'restrictions”). This is the single most common reason music stops '
           'after a few minutes.',
     ),
     (
       'Allow background activity',
-      'Settings → Apps → Saxify → allow “Background activity” / “Display over '
+      'Settings → Apps → IfallMusic → allow “Background activity” / “Display over '
           'other apps”. Manufacturer skins (MIUI, ColorOS, One UI, OxygenOS) '
           'each have their own switch.',
     ),
     (
-      'Lock Saxify in Recents',
-      'Open Recents, pull the Saxify card down and tap the lock icon. The app '
+      'Lock IfallMusic in Recents',
+      'Open Recents, pull the IfallMusic card down and tap the lock icon. The app '
           'will not be killed when you clear recent apps.',
     ),
     (
@@ -169,7 +169,7 @@ class _BackgroundGuideSheet extends StatelessWidget {
                     const Expanded(
                       child: Text(
                         'Still cutting out? Turn on “Autoplay” and “Gapless '
-                        'playback” in Settings — if a stream dies, Saxify skips '
+                        'playback” in Settings — if a stream dies, IfallMusic skips '
                         'to a similar track instead of stopping.',
                         style: TextStyle(fontSize: 12, height: 1.5),
                       ),

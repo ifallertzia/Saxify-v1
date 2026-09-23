@@ -8,10 +8,12 @@ import 'package:provider/provider.dart';
 import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
+import '../../core/theme/glass.dart';
 import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
 import 'equalizer_page.dart';
+import 'sound_panel.dart';
 import '../widgets/artwork.dart';
 import '../widgets/song_menu.dart';
 import '../widgets/song_tile.dart';
@@ -51,36 +53,41 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     return showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (BuildContext sheetContext) => SafeArea(
-        child: Container(
-          decoration: const BoxDecoration(
-            color: SaxifyColors.surface,
-            borderRadius: BorderRadius.vertical(
-                top: Radius.circular(SaxifyTheme.radiusLg)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const SizedBox(height: 16),
-              Text('Playback speed',
-                  style: GoogleFonts.spaceGrotesk(
-                      fontSize: 15, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              for (final double s in speeds)
-                ListTile(
-                  onTap: () {
-                    playback.setSpeed(s);
-                    Navigator.of(sheetContext).pop();
-                  },
-                  title: Text('${s}x'),
-                  trailing: playback.speed == s
-                      ? Icon(Icons.check_rounded, color: context.accent.primary)
-                      : null,
-                ),
-              const SizedBox(height: 12),
-            ],
-          ),
+      builder: (BuildContext sheetContext) => GlassSheet(
+        title: 'Playback speed',
+        subtitle: 'Applied instantly to the current track',
+        maxHeightFactor: 0.6,
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.only(bottom: 22),
+          children: <Widget>[
+            for (final double s in speeds)
+              ListTile(
+                onTap: () {
+                  playback.setSpeed(s);
+                  Navigator.of(sheetContext).pop();
+                },
+                title: Text('${s}x'),
+                trailing: playback.speed == s
+                    ? Icon(Icons.check_rounded, color: sheetContext.accent.primary)
+                    : null,
+              ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showSoundSheet() {
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) => const GlassSheet(
+        title: 'Sound',
+        subtitle: 'Volume, equalizer and 8D spatial audio',
+        maxHeightFactor: 0.9,
+        child: SingleChildScrollView(child: SoundPanel()),
       ),
     );
   }
@@ -396,38 +403,33 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                 ),
 
                 // ---- extras --------------------------------------------------
+                // Sound button on the LEFT of the speed chip, exactly as the
+                // brief asked: it opens the glass sound panel (volume + EQ +
+                // 8D spatial). The rest of the row is unchanged behaviour.
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                   child: Row(
                     children: <Widget>[
-                      IconButton(
-                        icon: Icon(
-                          _showVolume
-                              ? Icons.volume_up_rounded
-                              : Icons.tune_rounded,
-                          size: 20,
-                          color: SaxifyColors.textMuted,
-                        ),
-                        onPressed: () =>
-                            setState(() => _showVolume = !_showVolume),
+                      _RoundAction(
+                        icon: Icons.graphic_eq_rounded,
+                        active: _showVolume,
+                        onTap: () {
+                          setState(() => _showVolume = !_showVolume);
+                          _showSoundSheet();
+                        },
                       ),
-                      if (_showVolume)
-                        Expanded(
-                          child: Slider(
-                            value: playback.volume,
-                            onChanged: playback.setVolume,
-                          ),
-                        )
-                      else
-                        Expanded(
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: <Widget>[
                               _ChipButton(
                                 label: '${playback.speed}x',
                                 icon: Icons.speed_rounded,
                                 onTap: () => _showSpeedSheet(playback),
                               ),
+                              const SizedBox(width: 8),
                               _ChipButton(
                                 label: playback.sleepRemaining == null
                                     ? 'Sleep'
@@ -436,14 +438,16 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                 active: playback.sleepRemaining != null,
                                 onTap: () => _showSleepSheet(playback),
                               ),
+                              const SizedBox(width: 8),
                               _ChipButton(
                                 label: 'Queue',
                                 icon: Icons.queue_music_rounded,
                                 onTap: _showQueueSheet,
                               ),
+                              const SizedBox(width: 8),
                               _ChipButton(
-                                label: 'EQ',
-                                icon: Icons.graphic_eq_rounded,
+                                label: 'Equalizer',
+                                icon: Icons.tune_rounded,
                                 onTap: () => Navigator.of(context).push(
                                   MaterialPageRoute<void>(
                                     builder: (_) => const EqualizerPage(),
@@ -453,6 +457,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                             ],
                           ),
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -497,15 +502,15 @@ class _PlayButton extends StatelessWidget {
           ],
         ),
         child: loading
-            ? const Padding(
-                padding: EdgeInsets.all(20),
+            ? Padding(
+                padding: const EdgeInsets.all(20),
                 child: CircularProgressIndicator(
-                    strokeWidth: 2.5, color: Colors.black),
+                    strokeWidth: 2.5, color: accent.onAccent),
               )
             : Icon(
                 playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                 size: 38,
-                color: Colors.black,
+                color: accent.onAccent,
               ),
       ),
     );
@@ -539,6 +544,51 @@ class _TransportIcon extends StatelessWidget {
   }
 }
 
+/// Round glass action button (the sound panel trigger).
+class _RoundAction extends StatelessWidget {
+  const _RoundAction({
+    required this.icon,
+    required this.onTap,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final SaxifyAccent accent = context.accent;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: active
+                ? accent.primary.withValues(alpha: 0.22)
+                : Colors.white.withValues(alpha: 0.07),
+            border: Border.all(
+              color: active
+                  ? accent.primary.withValues(alpha: 0.6)
+                  : Colors.white.withValues(alpha: 0.12),
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 21,
+            color: active ? accent.primary : SaxifyColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ChipButton extends StatelessWidget {
   const _ChipButton({
     required this.label,
@@ -561,14 +611,16 @@ class _ChipButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
             color: active
-                ? accent.primary.withValues(alpha: 0.16)
-                : SaxifyColors.surfaceAlt,
+                ? accent.primary.withValues(alpha: 0.18)
+                : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: active ? accent.primary : SaxifyColors.border,
+              color: active
+                  ? accent.primary.withValues(alpha: 0.6)
+                  : Colors.white.withValues(alpha: 0.10),
             ),
           ),
           child: Row(
@@ -602,24 +654,14 @@ class _SleepSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const List<int> minutes = <int>[15, 30, 45, 60, 90];
-    return SafeArea(
-      child: Container(
-        decoration: const BoxDecoration(
-          color: SaxifyColors.surface,
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(SaxifyTheme.radiusLg)),
-        ),
+    return GlassSheet(
+      title: 'Sleep timer',
+      subtitle: 'Pause playback automatically',
+      maxHeightFactor: 0.75,
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const SizedBox(height: 16),
-            Text('Sleep timer',
-                style: GoogleFonts.spaceGrotesk(
-                    fontSize: 15, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            const Text('Pause playback automatically',
-                style: TextStyle(fontSize: 12, color: SaxifyColors.textMuted)),
-            const SizedBox(height: 10),
             for (final int m in minutes)
               ListTile(
                 title: Text('$m minutes'),
@@ -647,7 +689,7 @@ class _SleepSheet extends StatelessWidget {
                   Navigator.of(context).pop();
                 },
               ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -670,80 +712,97 @@ class _QueueSheet extends StatelessWidget {
       maxChildSize: 0.94,
       expand: false,
       builder: (BuildContext context, ScrollController controller) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: SaxifyColors.surface,
-            borderRadius: BorderRadius.vertical(
-                top: Radius.circular(SaxifyTheme.radiusLg)),
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(SaxifyTheme.radiusLg),
           ),
-          child: Column(
-            children: <Widget>[
-              const SizedBox(height: 10),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: SaxifyColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text('Up next',
-                              style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 16, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${queue.length} tracks in the queue',
-                            style: const TextStyle(
-                                fontSize: 12, color: SaxifyColors.textMuted),
+          child: BackdropFilter(
+            filter: GlassBlur.thickFilter,
+            child: ColoredBox(
+              color: const Color(0xFF0B0B0F).withValues(alpha: 0.94),
+              child: Column(
+                children: <Widget>[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 44,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                'Up next',
+                                style: SaxifyTheme.appleFont(
+                                  size: 17,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${queue.length} tracks in the queue',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: SaxifyColors.textMuted,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Shuffle queue',
-                      icon: Icon(Icons.shuffle_rounded,
-                          color: playback.shuffleEnabled
-                              ? accent.primary
-                              : SaxifyColors.textMuted),
-                      onPressed: playback.toggleShuffle,
-                    ),
-                    IconButton(
-                      tooltip: 'Clear queue',
-                      icon: const Icon(Icons.delete_sweep_rounded,
-                          color: SaxifyColors.textMuted),
-                      onPressed: playback.clearQueue,
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: queue.isEmpty
-                    ? const Center(
-                        child: Text('Queue is empty',
-                            style: TextStyle(color: SaxifyColors.textMuted)),
-                      )
-                    : ListView.builder(
-                        controller: controller,
-                        padding: const EdgeInsets.only(bottom: 20),
-                        itemCount: queue.length,
-                        itemBuilder: (BuildContext c, int i) => QueueTile(
-                          song: queue[i],
-                          isPlaying: i == playback.currentIndex,
-                          onTap: () => playback.skipToIndex(i),
-                          onRemove: () => playback.removeFromQueue(i),
                         ),
-                      ),
+                        IconButton(
+                          tooltip: 'Shuffle queue',
+                          icon: Icon(
+                            Icons.shuffle_rounded,
+                            color: playback.shuffleEnabled
+                                ? accent.primary
+                                : SaxifyColors.textMuted,
+                          ),
+                          onPressed: playback.toggleShuffle,
+                        ),
+                        IconButton(
+                          tooltip: 'Clear queue',
+                          icon: const Icon(
+                            Icons.delete_sweep_rounded,
+                            color: SaxifyColors.textMuted,
+                          ),
+                          onPressed: playback.clearQueue,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: queue.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Queue is empty',
+                              style: TextStyle(color: SaxifyColors.textMuted),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: controller,
+                            padding: const EdgeInsets.only(bottom: 24),
+                            itemCount: queue.length,
+                            itemBuilder: (BuildContext c, int i) => QueueTile(
+                              song: queue[i],
+                              isPlaying: i == playback.currentIndex,
+                              onTap: () => playback.skipToIndex(i),
+                              onRemove: () => playback.removeFromQueue(i),
+                            ),
+                          ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },

@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../config/backend_config.dart';
-import '../../downloader/downloader_models.dart';
 
 /// Everything the Settings screen owns, persisted with shared_preferences.
 ///
@@ -28,8 +26,12 @@ class SettingsService extends ChangeNotifier {
   static const String kPlaybackSpeed = 'saxify.playback_speed';
   static const String kExplicitFilter = 'saxify.explicit_filter';
   static const String kLastPositions = 'saxify.last_positions';
-  static const String kDownloaderUrl = 'saxify.downloader_url';
-  static const String kDownloaderMode = 'saxify.downloader_mode';
+  static const String kCustomAccentPrimary = 'saxify.custom_accent_primary';
+  static const String kCustomAccentSecondary = 'saxify.custom_accent_secondary';
+  static const String kSpatialPreset = 'saxify.spatial_preset';
+  static const String kSpatialDepth = 'saxify.spatial_depth';
+  static const String kSpatialSpeed = 'saxify.spatial_speed';
+  static const String kSpatialReverb = 'saxify.spatial_reverb';
   static const String kLastPlaylistCode = 'saxify.last_playlist_code';
   static const String kAutoPlaylistSync = 'saxify.auto_playlist_sync';
   static const String kMaxDownloadHistory = 'saxify.max_download_history';
@@ -44,9 +46,18 @@ class SettingsService extends ChangeNotifier {
       _prefs.setString(kEmail, v).then((_) => notifyListeners());
 
   // ---------------------------------------------------------------- theme
-  String get accentId => _prefs.getString(kAccentId) ?? 'neon-violet';
+  String get accentId => _prefs.getString(kAccentId) ?? 'violet-pulse';
   Future<void> setAccentId(String v) =>
       _prefs.setString(kAccentId, v).then((_) => notifyListeners());
+
+  int? get customAccentPrimary => _prefs.getInt(kCustomAccentPrimary);
+  int? get customAccentSecondary => _prefs.getInt(kCustomAccentSecondary);
+
+  Future<void> setCustomAccent({required int primary, required int secondary}) async {
+    await _prefs.setInt(kCustomAccentPrimary, primary);
+    await _prefs.setInt(kCustomAccentSecondary, secondary);
+    notifyListeners();
+  }
 
   bool get autoRotateTheme => _prefs.getBool(kAutoRotateTheme) ?? true;
   Future<void> setAutoRotateTheme(bool v) =>
@@ -123,28 +134,7 @@ class SettingsService extends ChangeNotifier {
 
   Future<void> forgetPositions() => _prefs.remove(kLastPositions);
 
-  // ------------------------------------------------------- v2 remotes
-  String get downloaderBaseUrl {
-    final String raw = _prefs.getString(kDownloaderUrl)?.trim() ?? '';
-    if (raw.isEmpty) return BackendConfig.downloaderBaseDefault;
-    return raw;
-  }
-
-  Future<void> setDownloaderBaseUrl(String value) => _prefs
-      .setString(kDownloaderUrl, value.trim())
-      .then((_) => notifyListeners());
-
-  DownloaderMode get downloaderMode {
-    final String raw = _prefs.getString(kDownloaderMode) ?? DownloaderMode.ask.name;
-    return DownloaderMode.values.firstWhere(
-      (DownloaderMode mode) => mode.name == raw,
-      orElse: () => DownloaderMode.ask,
-    );
-  }
-
-  Future<void> setDownloaderMode(DownloaderMode mode) =>
-      _prefs.setString(kDownloaderMode, mode.name).then((_) => notifyListeners());
-
+  // ------------------------------------------------------- playlist codes
   String? get lastPlaylistCode => _prefs.getString(kLastPlaylistCode);
 
   Future<void> setLastPlaylistCode(String code) =>
@@ -156,6 +146,24 @@ class SettingsService extends ChangeNotifier {
       _prefs.setBool(kAutoPlaylistSync, value).then((_) => notifyListeners());
 
   int get maxDownloadHistory => _prefs.getInt(kMaxDownloadHistory) ?? 120;
+
+  // ----------------------------------------------------- spatial audio (8D)
+  String get spatialPresetId => _prefs.getString(kSpatialPreset) ?? 'off';
+
+  Future<void> setSpatialPresetId(String id) =>
+      _prefs.setString(kSpatialPreset, id).then((_) => notifyListeners());
+
+  double get spatialDepth => _prefs.getDouble(kSpatialDepth) ?? 0.85;
+  Future<void> setSpatialDepth(double v) =>
+      _prefs.setDouble(kSpatialDepth, v).then((_) => notifyListeners());
+
+  double get spatialRotationHz => _prefs.getDouble(kSpatialSpeed) ?? 0.18;
+  Future<void> setSpatialRotationHz(double v) =>
+      _prefs.setDouble(kSpatialSpeed, v).then((_) => notifyListeners());
+
+  double get spatialReverb => _prefs.getDouble(kSpatialReverb) ?? 0.35;
+  Future<void> setSpatialReverb(double v) =>
+      _prefs.setDouble(kSpatialReverb, v).then((_) => notifyListeners());
 
   Future<void> resetAll() async {
     await _prefs.clear();

@@ -8,6 +8,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 import 'notification_bootstrap.dart';
+import '../../config/branding.dart';
 
 import '../models/song.dart';
 import 'library_service.dart';
@@ -441,7 +442,7 @@ class PlaybackService extends ChangeNotifier {
             id: song.id,
             title: song.title,
             artist: song.artist,
-            album: song.subtitle ?? 'Saxify',
+            album: song.subtitle ?? IfallBranding.appName,
             artUri: art != null && art.hasScheme ? art : null,
             duration: song.duration,
           ),

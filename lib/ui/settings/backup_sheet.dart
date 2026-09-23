@@ -22,7 +22,7 @@ Future<void> showBackupSheet(BuildContext context, LibraryService library) async
             Text('Backup library', style: GoogleFonts.spaceGrotesk(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             const Text(
-              'This is a local library JSON backup, separate from cloud playlist codes. It is copied to your clipboard and imported on this device; Saxify does not upload it.',
+              'This is a local library JSON backup, separate from cloud playlist codes. It is copied to your clipboard and imported on this device; IfallMusic does not upload it.',
               style: TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
             ),
             Align(
@@ -42,7 +42,7 @@ Future<void> showBackupSheet(BuildContext context, LibraryService library) async
               controller: controller,
               minLines: 4,
               maxLines: 8,
-              decoration: const InputDecoration(hintText: 'Paste a Saxify library JSON'),
+              decoration: const InputDecoration(hintText: 'Paste an IfallMusic library JSON'),
             ),
             const SizedBox(height: 12),
             Wrap(

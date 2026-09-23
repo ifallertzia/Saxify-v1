@@ -9,6 +9,7 @@ import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
 import '../../core/services/recommendation_service.dart';
 import '../../core/services/youtube_service.dart';
+import '../../core/theme/glass.dart';
 import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
 import '../../data/labels.dart';
@@ -145,7 +146,9 @@ class _SearchPageState extends State<SearchPage> {
     final PlaybackService playback = context.read<PlaybackService>();
     final bool idle = _results.isEmpty && !_loading && _error == null;
 
-    return Scaffold(
+    return AuroraBackdrop(
+      intensity: 0.5,
+      child: Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
@@ -238,12 +241,6 @@ class _SearchPageState extends State<SearchPage> {
                                 onClear: library.clearSearchHistory,
                               ),
                             if (idle) const _ExploreMusic(),
-                            if (idle)
-                              const EmptyState(
-                                icon: Icons.travel_explore_rounded,
-                                title: 'Kuch bhi search karo — songs, artists, albums…',
-                                message: 'Search is on this screen, and on Explore Music too.',
-                              ),
                             if (_results.isNotEmpty) ...<Widget>[
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -283,6 +280,7 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -415,9 +413,10 @@ class _ExploreMusic extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (BuildContext context, int i) {
               final brand = MusicBrands.all[i];
-              return ActionChip(
-                label: Text(brand.name),
-                onPressed: () => Navigator.of(context).push(
+              return MoodChip(
+                label: brand.name,
+                icon: Icons.album_outlined,
+                onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(builder: (_) => BrandChannelPage(brand: brand)),
                 ),
               );
@@ -444,14 +443,36 @@ class _ArtistResults extends StatelessWidget {
     return Column(
       children: <Widget>[
         for (final Song song in unique)
-          ListTile(
-            leading: const Icon(Icons.person_rounded),
-            title: Text(song.artist),
-            subtitle: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          GlassListTile(
             onTap: () => openArtistByName(
               context,
               name: song.artist,
               channelId: song.channelId,
+            ),
+            leading: ArtistAvatar(name: song.artist, size: 44, ring: false),
+            trailing: const Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: SaxifyColors.textFaint,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  song.artist,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  song.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
+                ),
+              ],
             ),
           ),
       ],

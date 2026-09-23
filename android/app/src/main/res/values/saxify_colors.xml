@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Saxify splash background — matches the app's deep-space surface -->
+    <!-- IfallMusic splash background — matches the app's deep-space surface -->
     <color name="saxify_splash_background">#08070D</color>
 </resources>

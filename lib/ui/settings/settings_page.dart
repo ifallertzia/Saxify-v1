@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -9,21 +9,27 @@ import '../../config/branding.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
 import '../../core/services/settings_service.dart';
+import '../../core/services/spatial_audio_service.dart';
+import '../../core/theme/glass.dart';
 import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/utils/format.dart';
+import '../downloads/storage_permission.dart';
+import '../player/equalizer_page.dart';
+import '../shell/shell_controller.dart';
 import '../widgets/neon.dart';
 import '../widgets/saxify_logo.dart';
-import '../downloads/music_downloads_page.dart';
-import '../player/equalizer_page.dart';
 import 'background_guide_sheet.dart';
 import 'backup_sheet.dart';
-import 'diagnostics_page.dart';
 import 'playlist_sync_sheet.dart';
 import 'update_dialog.dart';
 
-/// Settings — the same panels the web app shows.
+/// `1.0` renders as `1x`, `1.25` as `1.25x` — so the chip matches a choice.
+String _speedLabel(double speed) =>
+    speed == speed.roundToDouble() ? '${speed.toInt()}x' : '${speed}x';
+
+/// Settings — the same panels as before, rebuilt in liquid glass on black.
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
@@ -32,227 +38,241 @@ class SettingsPage extends StatelessWidget {
     final SettingsService settings = context.watch<SettingsService>();
     final LibraryService library = context.watch<LibraryService>();
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: <Widget>[
-          SliverAppBar(
-            pinned: true,
-            title: Text('Settings',
-                style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
-            backgroundColor: SaxifyColors.background,
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 160),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate(<Widget>[
-                // ------------------------------------------------ Account
-                const _PanelHeader(
-                  title: 'Account & Profile',
-                  subtitle: 'Your identity and library portability',
+    return AuroraBackdrop(
+      intensity: 0.45,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: CustomScrollView(
+          slivers: <Widget>[
+            SliverAppBar(
+              pinned: true,
+              backgroundColor: Colors.transparent,
+              title: Text(
+                'Settings',
+                style: SaxifyTheme.appleFont(
+                  size: 22,
+                  weight: FontWeight.w800,
+                  letterSpacing: -0.6,
                 ),
-                _SettingTile(
-                  icon: Icons.person_outline_rounded,
-                  title: 'Display name',
-                  subtitle: 'Shown across your dashboard',
-                  trailing: Text(
-                    settings.displayName,
-                    style: const TextStyle(
-                        fontSize: 13, color: SaxifyColors.textSecondary),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 210),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate(<Widget>[
+                  // ------------------------------------------------ Account
+                  const _PanelHeader(
+                    title: 'Account & Profile',
+                    subtitle: 'Your identity and library portability',
                   ),
-                  onTap: () => _editText(
-                    context,
+                  _SettingTile(
+                    icon: Icons.person_outline_rounded,
                     title: 'Display name',
-                    initial: settings.displayName,
-                    onSave: settings.setDisplayName,
-                  ),
-                ),
-                _SettingTile(
-                  icon: Icons.upload_file_rounded,
-                  title: 'Backup library',
-                  subtitle: 'Copy JSON, or paste a backup to merge or replace',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: SaxifyColors.textFaint),
-                  onTap: () => showBackupSheet(context, library),
-                ),
-                _SettingTile(
-                  icon: Icons.cloud_upload_outlined,
-                  title: 'Generate all playlist codes',
-                  subtitle: 'Copies a cloud code to the clipboard',
-                  onTap: () => shareAllPlaylistCodes(context),
-                ),
-                _SettingTile(
-                  icon: Icons.cloud_download_outlined,
-                  title: 'Import playlist code',
-                  subtitle: 'Paste a code to restore playlists',
-                  onTap: () => showImportCodeSheet(context),
-                ),
-                _SwitchTile(
-                  icon: Icons.sync_rounded,
-                  title: 'Auto-sync playlists',
-                  subtitle: 'Saves a fresh cloud code after playlist changes',
-                  value: settings.autoPlaylistSync,
-                  onChanged: settings.setAutoPlaylistSync,
-                ),
-                _SettingTile(
-                  icon: Icons.graphic_eq_rounded,
-                  title: 'Equalizer',
-                  subtitle: 'Uses the current player session',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const EqualizerPage()),
-                  ),
-                ),
-                _SettingTile(
-                  icon: Icons.download_outlined,
-                  title: 'Music downloads',
-                  subtitle: 'Files in Download/Saxify, with delete',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const MusicDownloadsPage()),
-                  ),
-                ),
-                _SettingTile(
-                  icon: Icons.monitor_heart_outlined,
-                  title: 'Downloader diagnostics',
-                  subtitle: 'Backend health, version, boot log',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => DiagnosticsPage(
-                        safeMode: context.read<bool>(),
+                    subtitle: 'Shown across your dashboard',
+                    trailing: Text(
+                      settings.displayName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: SaxifyColors.textSecondary,
                       ),
                     ),
+                    onTap: () => _editText(
+                      context,
+                      title: 'Display name',
+                      initial: settings.displayName,
+                      onSave: settings.setDisplayName,
+                    ),
                   ),
-                ),
-
-                // ------------------------------------------------ Appearance
-                const _PanelHeader(
-                  title: 'Appearance & Theme',
-                  subtitle: 'Make Saxify unmistakably yours',
-                ),
-                const _ThemePanel(),
-
-                // ------------------------------------------------ Playback
-                const _PanelHeader(
-                  title: 'Playback & Audio Engine',
-                  subtitle: 'Streaming quality, gapless handoff and auto-next',
-                ),
-                _ChoiceTile(
-                  icon: Icons.wifi_rounded,
-                  title: 'Streaming quality · Wi-Fi',
-                  subtitle: 'Quality badge shown in the player',
-                  choices: const <String>['low', 'medium', 'high'],
-                  value: settings.qualityWifi,
-                  onChanged: settings.setQualityWifi,
-                ),
-                _ChoiceTile(
-                  icon: Icons.network_cell_rounded,
-                  title: 'Streaming quality · Mobile data',
-                  subtitle: 'Save bandwidth on the go',
-                  choices: const <String>['low', 'medium', 'high'],
-                  value: settings.qualityMobile,
-                  onChanged: settings.setQualityMobile,
-                ),
-                _SwitchTile(
-                  icon: Icons.bolt_rounded,
-                  title: 'Gapless playback',
-                  subtitle: 'Preloads the next track for seamless transitions',
-                  value: settings.gapless,
-                  onChanged: settings.setGapless,
-                ),
-                _SwitchTile(
-                  icon: Icons.autorenew_rounded,
-                  title: 'Autoplay',
-                  subtitle:
-                      'Keep similar music flowing when your queue ends — playback never stops',
-                  value: settings.autoplay,
-                  onChanged: settings.setAutoplay,
-                ),
-                _SwitchTile(
-                  icon: Icons.history_rounded,
-                  title: 'Remember playback position',
-                  subtitle: 'Resume exactly where you left off',
-                  value: settings.rememberPosition,
-                  onChanged: settings.setRememberPosition,
-                ),
-                _ChoiceTile(
-                  icon: Icons.speed_rounded,
-                  title: 'Playback speed',
-                  subtitle: 'Applied instantly to the current track',
-                  choices: const <String>['0.75x', '1x', '1.25x', '1.5x'],
-                  value: '${settings.playbackSpeed}x',
-                  onChanged: (String v) => context
-                      .read<PlaybackService>()
-                      .setSpeed(double.parse(v.replaceAll('x', ''))),
-                ),
-
-                // ------------------------------------------------ System
-                const _PanelHeader(
-                  title: 'System & Device Controls',
-                  subtitle: 'How Saxify talks to your phone',
-                ),
-                _SettingTile(
-                  icon: Icons.headphones_battery_rounded,
-                  title: 'Instructions to play in background',
-                  subtitle: 'Keep the music going with the screen off',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: SaxifyColors.textFaint),
-                  onTap: () => showBackgroundGuideSheet(context),
-                ),
-                _SettingTile(
-                  icon: Icons.bedtime_rounded,
-                  title: 'Sleep timer',
-                  subtitle: 'Pause playback automatically',
-                  trailing: Text(
-                    context.watch<PlaybackService>().sleepRemaining == null
-                        ? 'Off'
-                        : Fmt.clock(context.read<PlaybackService>().sleepRemaining!),
-                    style: const TextStyle(
-                        fontSize: 13, color: SaxifyColors.textSecondary),
+                  _SettingTile(
+                    icon: Icons.upload_file_rounded,
+                    title: 'Backup library',
+                    subtitle: 'Copy JSON, or paste a backup to merge or replace',
+                    onTap: () => showBackupSheet(context, library),
                   ),
-                  onTap: () => _sleepSheet(context),
-                ),
+                  _SettingTile(
+                    icon: Icons.cloud_upload_outlined,
+                    title: 'Generate all playlist codes',
+                    subtitle: 'Copies a cloud code to the clipboard',
+                    onTap: () => shareAllPlaylistCodes(context),
+                  ),
+                  _SettingTile(
+                    icon: Icons.cloud_download_outlined,
+                    title: 'Import playlist code',
+                    subtitle: 'Paste a code to restore playlists',
+                    onTap: () => showImportCodeSheet(context),
+                  ),
 
-                // ------------------------------------------------ Privacy
-                const _PanelHeader(
-                  title: 'Privacy & Storage',
-                  subtitle: 'Control what Saxify remembers',
-                ),
-                _SettingTile(
-                  icon: Icons.search_off_rounded,
-                  title: 'Clear search history',
-                  subtitle: 'Removes your recent search terms',
-                  onTap: () async {
-                    await library.clearSearchHistory();
-                    if (context.mounted) _toast(context, 'Search history cleared');
-                  },
-                ),
-                _SettingTile(
-                  icon: Icons.cleaning_services_outlined,
-                  title: 'Clear listening history',
-                  subtitle: 'Deletes recently played from this device',
-                  onTap: () async {
-                    await library.clearHistory();
-                    await settings.forgetPositions();
-                    if (context.mounted) _toast(context, 'Listening history cleared');
-                  },
-                ),
+                  // ------------------------------------------------ Appearance
+                  const _PanelHeader(
+                    title: 'Appearance & Theme',
+                    subtitle: 'Pick a colour, or build your own mix',
+                  ),
+                  const _ThemePanel(),
 
-                // ------------------------------------------------ About
-                const _PanelHeader(
-                  title: 'About & Support',
-                  subtitle: 'Version info, legal and help',
-                ),
-                _SettingTile(
-                  icon: Icons.system_update_rounded,
-                  title: 'Check for updates',
-                  subtitle: 'Silent in-app updates from GitHub Releases',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: SaxifyColors.textFaint),
-                  onTap: () => checkAndPromptUpdate(context, silent: false),
-                ),
-                const _AboutCard(),
-              ]),
+                  // ------------------------------------------------ Effects
+                  const _PanelHeader(
+                    title: 'Audio & Effects',
+                    subtitle: 'Equalizer, 8D spatial audio and sound panel',
+                  ),
+                  _SettingTile(
+                    icon: Icons.graphic_eq_rounded,
+                    title: 'Equalizer & 8D spatial audio',
+                    subtitle: 'Bands, presets and the spatial templates',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(builder: (_) => const EqualizerPage()),
+                    ),
+                  ),
+                  const _SpatialQuickTile(),
+
+                  // ------------------------------------------------ Playback
+                  const _PanelHeader(
+                    title: 'Playback',
+                    subtitle: 'Streaming quality, gapless handoff and auto-next',
+                  ),
+                  _ChoiceTile(
+                    icon: Icons.wifi_rounded,
+                    title: 'Streaming quality · Wi-Fi',
+                    subtitle: 'Quality badge shown in the player',
+                    choices: const <String>['low', 'medium', 'high'],
+                    value: settings.qualityWifi,
+                    onChanged: settings.setQualityWifi,
+                  ),
+                  _ChoiceTile(
+                    icon: Icons.network_cell_rounded,
+                    title: 'Streaming quality · Mobile data',
+                    subtitle: 'Save bandwidth on the go',
+                    choices: const <String>['low', 'medium', 'high'],
+                    value: settings.qualityMobile,
+                    onChanged: settings.setQualityMobile,
+                  ),
+                  _SwitchTile(
+                    icon: Icons.bolt_rounded,
+                    title: 'Gapless playback',
+                    subtitle: 'Preloads the next track for seamless transitions',
+                    value: settings.gapless,
+                    onChanged: settings.setGapless,
+                  ),
+                  _SwitchTile(
+                    icon: Icons.autorenew_rounded,
+                    title: 'Autoplay',
+                    subtitle:
+                        'Keep similar music flowing when your queue ends — playback never stops',
+                    value: settings.autoplay,
+                    onChanged: settings.setAutoplay,
+                  ),
+                  _SwitchTile(
+                    icon: Icons.history_rounded,
+                    title: 'Remember playback position',
+                    subtitle: 'Resume exactly where you left off',
+                    value: settings.rememberPosition,
+                    onChanged: settings.setRememberPosition,
+                  ),
+                  _ChoiceTile(
+                    icon: Icons.speed_rounded,
+                    title: 'Playback speed',
+                    subtitle: 'Applied instantly to the current track',
+                    choices: const <String>['0.75x', '1x', '1.25x', '1.5x'],
+                    value: _speedLabel(settings.playbackSpeed),
+                    onChanged: (String v) async {
+                      final double speed = double.parse(v.replaceAll('x', ''));
+                      await settings.setPlaybackSpeed(speed);
+                      if (context.mounted) {
+                        await context.read<PlaybackService>().setSpeed(speed);
+                      }
+                    },
+                  ),
+
+                  // ------------------------------------------------ Storage
+                  const _PanelHeader(
+                    title: 'Downloads & Storage',
+                    subtitle: 'Everything is saved on this phone — no backend',
+                  ),
+                  _SettingTile(
+                    icon: Icons.download_done_rounded,
+                    title: 'Your Downloads',
+                    subtitle: 'Songs saved offline, with delete and progress',
+                    onTap: () {
+                      Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
+                      context.read<ShellController>().goDownloads();
+                    },
+                  ),
+                  _SettingTile(
+                    icon: Icons.folder_outlined,
+                    title: 'Storage permission',
+                    subtitle: 'Save a public copy in Download/${IfallBranding.downloadFolderName}',
+                    onTap: () => StoragePermission.ensure(context),
+                  ),
+
+                  // ------------------------------------------------ System
+                  const _PanelHeader(
+                    title: 'System & Device',
+                    subtitle: 'How IfallMusic talks to your phone',
+                  ),
+                  _SettingTile(
+                    icon: Icons.headphones_battery_rounded,
+                    title: 'Instructions to play in background',
+                    subtitle: 'Keep the music going with the screen off',
+                    onTap: () => showBackgroundGuideSheet(context),
+                  ),
+                  _SettingTile(
+                    icon: Icons.bedtime_rounded,
+                    title: 'Sleep timer',
+                    subtitle: 'Pause playback automatically',
+                    trailing: Text(
+                      context.watch<PlaybackService>().sleepRemaining == null
+                          ? 'Off'
+                          : Fmt.clock(context.read<PlaybackService>().sleepRemaining!),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: SaxifyColors.textSecondary,
+                      ),
+                    ),
+                    onTap: () => _sleepSheet(context),
+                  ),
+
+                  // ------------------------------------------------ Privacy
+                  const _PanelHeader(
+                    title: 'Privacy & Storage',
+                    subtitle: 'Control what IfallMusic remembers',
+                  ),
+                  _SettingTile(
+                    icon: Icons.search_off_rounded,
+                    title: 'Clear search history',
+                    subtitle: 'Removes your recent search terms',
+                    onTap: () async {
+                      await library.clearSearchHistory();
+                      if (context.mounted) _toast(context, 'Search history cleared');
+                    },
+                  ),
+                  _SettingTile(
+                    icon: Icons.cleaning_services_outlined,
+                    title: 'Clear listening history',
+                    subtitle: 'Deletes recently played from this device',
+                    onTap: () async {
+                      await library.clearHistory();
+                      await settings.forgetPositions();
+                      if (context.mounted) _toast(context, 'Listening history cleared');
+                    },
+                  ),
+
+                  // ------------------------------------------------ About
+                  const _PanelHeader(
+                    title: 'About & Support',
+                    subtitle: 'Version info, help and credits',
+                  ),
+                  _SettingTile(
+                    icon: Icons.system_update_rounded,
+                    title: 'Check for updates',
+                    subtitle: 'In-app updates from GitHub Releases',
+                    onTap: () => checkAndPromptUpdate(context, silent: false),
+                  ),
+                  const _AboutCard(),
+                  const _MadeWithLoveFooter(),
+                ]),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -267,8 +287,7 @@ class SettingsPage extends StatelessWidget {
     final String? value = await showDialog<String>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(title,
-            style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+        title: Text(title),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -294,12 +313,13 @@ class SettingsPage extends StatelessWidget {
     final PlaybackService playback = context.read<PlaybackService>();
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: SaxifyColors.surface,
-      builder: (BuildContext sheetContext) => SafeArea(
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext sheetContext) => GlassSheet(
+        title: 'Sleep timer',
+        subtitle: 'Playback pauses when the timer ends',
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const SizedBox(height: 14),
             for (final int m in <int>[15, 30, 45, 60, 90])
               ListTile(
                 title: Text('$m minutes'),
@@ -309,14 +329,16 @@ class SettingsPage extends StatelessWidget {
                 },
               ),
             ListTile(
-              title: const Text('Turn off',
-                  style: TextStyle(color: SaxifyColors.danger)),
+              title: const Text(
+                'Turn off',
+                style: TextStyle(color: SaxifyColors.danger),
+              ),
               onTap: () {
                 playback.cancelSleepTimer();
                 Navigator.of(sheetContext).pop();
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -330,21 +352,20 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
+// ------------------------------------------------------------------ reporting
 Future<void> _showReportDialog(BuildContext context) async {
   final TextEditingController details = TextEditingController();
   const List<String> categories = <String>[
     'Playback / background',
     'Search / song results',
     'Downloads',
-    'Playlist / backup',
     'UI / layout',
     'Suggestion',
   ];
   const List<(String, String)> examples = <(String, String)>[
-    ('Song stopped', 'A song stopped while Saxify was in the background.'),
+    ('Song stopped', 'A song stopped while IfallMusic was in the background.'),
     ('Wrong results', 'Search or a mood showed non-song / unrelated results.'),
     ('Download failed', 'A download did not start or did not finish.'),
-    ('Playlist restore', 'Playlist code or library JSON could not be restored.'),
     ('UI overlap', 'Some buttons or text overlap on my phone.'),
     ('Suggestion', 'I would like to suggest this feature: '),
   ];
@@ -357,33 +378,42 @@ Future<void> _showReportDialog(BuildContext context) async {
       context: context,
       builder: (BuildContext dialog) => StatefulBuilder(
         builder: (BuildContext dialog, StateSetter setDialogState) => AlertDialog(
-          title: Text('Contact / Report',
-              style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+          title: const Text('Contact / Report'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 const Text(
-                  'Choose an example below or write your own. Send opens Gmail or your email app with a ready-to-send draft.',
-                  style: TextStyle(fontSize: 12.5, height: 1.45, color: SaxifyColors.textSecondary),
+                  'Choose an example below or write your own. Send opens Gmail or your email app with a ready-to-send draft (normal spaces, no "+" signs).',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.45,
+                    color: SaxifyColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: category,
-                  decoration: const InputDecoration(labelText: 'What is this about?'),
-                  items: <DropdownMenuItem<String>>[
+                const Text(
+                  'What is this about?',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
                     for (final String item in categories)
-                      DropdownMenuItem<String>(value: item, child: Text(item)),
+                      ChoiceChip(
+                        label: Text(item, style: const TextStyle(fontSize: 11.5)),
+                        selected: category == item,
+                        onSelected: (_) => setDialogState(() => category = item),
+                      ),
                   ],
-                  onChanged: (String? value) {
-                    if (value != null) setDialogState(() => category = value);
-                  },
                 ),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 6,
-                  runSpacing: 4,
+                  runSpacing: 6,
                   children: <Widget>[
                     for (final (String, String) example in examples)
                       ActionChip(
@@ -391,13 +421,14 @@ Future<void> _showReportDialog(BuildContext context) async {
                         onPressed: () {
                           setDialogState(() {
                             details.text = example.$2;
-                            details.selection = TextSelection.collapsed(offset: details.text.length);
+                            details.selection =
+                                TextSelection.collapsed(offset: details.text.length);
                           });
                         },
                       ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 TextField(
                   controller: details,
                   minLines: 3,
@@ -436,35 +467,51 @@ Future<void> _showReportDialog(BuildContext context) async {
   }
 }
 
+/// Opens the listener's mail app with a properly encoded draft.
+///
+/// The old build used `Uri(queryParameters: …)`, which form-encodes spaces as
+/// `+` — that is why every word arrived with a plus sign. A `mailto:` URI wants
+/// **percent-encoding** (`%20`), so the query is built by hand here and spaces
+/// stay spaces in Gmail, Outlook and every other client.
 Future<void> _launchSupportEmail(
   BuildContext context,
   String category,
   String details,
 ) async {
-  final String subject = 'Saxify feedback: $category';
+  final String subject = '${IfallBranding.appName} feedback: $category';
   final String body = <String>[
-    'Hi Saxify team,',
+    'Hi ${IfallBranding.appName} team,',
     '',
     'Topic: $category',
     '',
-    details.trim().isEmpty ? 'Please describe the issue or suggestion here.' : details.trim(),
+    details.trim().isEmpty
+        ? 'Please describe the issue or suggestion here.'
+        : details.trim(),
     '',
     'Phone model / Android version (optional):',
-  ].join('\n');
-  final Uri mailto = Uri(
-    scheme: 'mailto',
-    path: SaxifyBranding.contactEmail,
-    queryParameters: <String, String>{'subject': subject, 'body': body},
-  );
+  ].join('\r\n');
+
+  Uri mailtoUri(String address) => Uri(
+        scheme: 'mailto',
+        path: address,
+        query: 'subject=${Uri.encodeComponent(subject)}'
+            '&body=${Uri.encodeComponent(body)}',
+      );
+
   bool opened = false;
   try {
-    opened = await launchUrl(mailto, mode: LaunchMode.externalApplication);
+    opened = await launchUrl(
+      mailtoUri(IfallBranding.contactEmail),
+      mode: LaunchMode.externalApplication,
+    );
   } catch (_) {}
+
   if (!opened) {
+    // Gmail web composer fallback — same doc, same readable spaces.
     final Uri gmail = Uri.https('mail.google.com', '/mail/', <String, String>{
       'view': 'cm',
       'fs': '1',
-      'to': SaxifyBranding.contactEmail,
+      'to': IfallBranding.contactEmail,
       'su': subject,
       'body': body,
     });
@@ -472,6 +519,7 @@ Future<void> _launchSupportEmail(
       opened = await launchUrl(gmail, mode: LaunchMode.externalApplication);
     } catch (_) {}
   }
+
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -492,11 +540,11 @@ class _ThemePanel extends StatefulWidget {
 
 class _ThemePanelState extends State<_ThemePanel> {
   Timer? _ticker;
+  bool _mixerOpen = false;
 
   @override
   void initState() {
     super.initState();
-    // Live "next switch in Ns" countdown.
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -513,87 +561,118 @@ class _ThemePanelState extends State<_ThemePanel> {
     final ThemeController theme = context.watch<ThemeController>();
     final SaxifyAccent accent = context.accent;
 
-    return NeonCard(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
+    return Column(
+      children: <Widget>[
+        GlassPanel(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('Accent colour',
-                        style: GoogleFonts.spaceGrotesk(
-                            fontSize: 14.5, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Paints the neon across the whole app',
-                      style: TextStyle(
-                          fontSize: 12, color: SaxifyColors.textMuted),
-                    ),
-                  ],
-                ),
-              ),
-              SaxifyLogo(size: 40, accent: accent),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: <Widget>[
-              for (final SaxifyAccent option in SaxifyAccents.all)
-                _AccentSwatch(
-                  accent: option,
-                  selected: option.id == accent.id,
-                  onTap: () => theme.pin(option.id),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: theme.autoRotate,
-            onChanged: theme.setAutoRotate,
-            title: const Text('Auto-rotate theme',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: Text(
-              theme.autoRotate
-                  ? 'Switching every ${theme.rotateInterval.inMinutes > 0 ? '${theme.rotateInterval.inMinutes} min' : '${theme.rotateInterval.inSeconds}s'} · next in ${theme.secondsUntilNextSwitch()}s'
-                  : 'Pick a colour above and it stays',
-              style:
-                  const TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
-            ),
-          ),
-          if (theme.autoRotate)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Wrap(
-                spacing: 8,
+              Row(
                 children: <Widget>[
-                  for (final Duration d in <Duration>[
-                    const Duration(minutes: 1),
-                    const Duration(minutes: 2),
-                    const Duration(seconds: 150),
-                    const Duration(minutes: 3),
-                    const Duration(minutes: 5),
-                  ])
-                    ChoiceChip(
-                      label: Text(d.inSeconds == 150
-                          ? '2.5 min'
-                          : '${d.inMinutes} min'),
-                      selected: d.inSeconds == theme.rotateInterval.inSeconds,
-                      onSelected: (_) => theme.setRotateInterval(d),
-                      labelStyle: const TextStyle(fontSize: 11.5),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          'Accent colour',
+                          style: SaxifyTheme.appleFont(size: 15, weight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Paints colour across the whole black app · ${accent.label}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: SaxifyColors.textMuted,
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                  SaxifyLogo(size: 42, accent: accent),
                 ],
               ),
-            ),
-        ],
-      ),
+              const SizedBox(height: 16),
+              LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  const double spacing = 10;
+                  final int columns =
+                      constraints.maxWidth < 330 ? 4 : (constraints.maxWidth < 520 ? 5 : 8);
+                  final double tile =
+                      (constraints.maxWidth - spacing * (columns - 1)) / columns;
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: <Widget>[
+                      for (final SaxifyAccent option in SaxifyAccents.all)
+                        _AccentSwatch(
+                          accent: option,
+                          width: tile,
+                          selected: theme.selectedId == option.id,
+                          onTap: () => theme.pin(option.id),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+              GlassButton(
+                label: _mixerOpen ? 'Hide colour mixer' : 'Build your own mix',
+                icon: _mixerOpen ? Icons.expand_less_rounded : Icons.palette_outlined,
+                filled: false,
+                expand: true,
+                compact: true,
+                onPressed: () => setState(() => _mixerOpen = !_mixerOpen),
+              ),
+              if (_mixerOpen) const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: _AccentMixer(),
+              ),
+              const SizedBox(height: 6),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: theme.autoRotate,
+                onChanged: theme.setAutoRotate,
+                title: const Text(
+                  'Auto-rotate theme',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  theme.autoRotate
+                      ? 'Switching every ${theme.rotateInterval.inMinutes > 0 ? '${theme.rotateInterval.inMinutes} min' : '${theme.rotateInterval.inSeconds}s'} · next in ${theme.secondsUntilNextSwitch()}s'
+                      : 'Pick a colour above and it stays',
+                  style: const TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
+                ),
+              ),
+              if (theme.autoRotate)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    for (final Duration d in <Duration>[
+                      const Duration(minutes: 1),
+                      const Duration(minutes: 2),
+                      const Duration(seconds: 150),
+                      const Duration(minutes: 3),
+                      const Duration(minutes: 5),
+                    ])
+                      ChoiceChip(
+                        label: Text(
+                          d.inSeconds == 150 ? '2.5 min' : '${d.inMinutes} min',
+                        ),
+                        selected: d.inSeconds == theme.rotateInterval.inSeconds,
+                        onSelected: (_) => theme.setRotateInterval(d),
+                        labelStyle: const TextStyle(fontSize: 11.5),
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -603,11 +682,13 @@ class _AccentSwatch extends StatelessWidget {
     required this.accent,
     required this.selected,
     required this.onTap,
+    required this.width,
   });
 
   final SaxifyAccent accent;
   final bool selected;
   final VoidCallback onTap;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -615,55 +696,318 @@ class _AccentSwatch extends StatelessWidget {
       message: accent.label,
       child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          width: 78,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected ? accent.primary : SaxifyColors.border,
-              width: selected ? 1.6 : 1,
-            ),
-            color: selected
-                ? accent.primary.withValues(alpha: 0.28)
-                : SaxifyColors.surfaceAlt,
-          ),
+        child: SizedBox(
+          width: width,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Container(
-                width: 26,
-                height: 26,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: width,
+                height: width,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(width * 0.42),
                   gradient: accent.gradient,
+                  border: Border.all(
+                    color: selected ? Colors.white : Colors.white.withValues(alpha: 0.18),
+                    width: selected ? 2.2 : 1,
+                  ),
                   boxShadow: <BoxShadow>[
                     BoxShadow(
-                      color: accent.primary.withValues(alpha: selected ? 0.6 : 0.25),
-                      blurRadius: 12,
-                      spreadRadius: -2,
+                      color: accent.primary.withValues(alpha: selected ? 0.55 : 0.22),
+                      blurRadius: selected ? 18 : 10,
+                      spreadRadius: -3,
                     ),
                   ],
                 ),
                 child: selected
-                    ? const Icon(Icons.check_rounded, size: 15, color: Colors.black)
+                    ? Icon(Icons.check_rounded, size: width * 0.5, color: accent.onAccent)
                     : null,
               ),
               const SizedBox(height: 6),
-              Text(
-                accent.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 9.5,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? accent.primary : SaxifyColors.textMuted,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  accent.label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? accent.primary : SaxifyColors.textMuted,
+                  ),
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// RGB mixer — the listener builds their own accent and the whole app follows.
+class _AccentMixer extends StatefulWidget {
+  const _AccentMixer();
+
+  @override
+  State<_AccentMixer> createState() => _AccentMixerState();
+}
+
+class _AccentMixerState extends State<_AccentMixer> {
+  late Color _primary;
+  late Color _deep;
+
+  @override
+  void initState() {
+    super.initState();
+    final ThemeController theme = context.read<ThemeController>();
+    _primary = theme.accent.primary;
+    _deep = theme.accent.secondary;
+  }
+
+  void _randomise() {
+    final math.Random random = math.Random();
+    setState(() {
+      _primary = HSVColor.fromAHSV(
+        1,
+        random.nextDouble() * 360,
+        0.55 + random.nextDouble() * 0.35,
+        0.72 + random.nextDouble() * 0.25,
+      ).toColor();
+      _deep = HSVColor.fromAHSV(
+        1,
+        random.nextDouble() * 360,
+        0.6 + random.nextDouble() * 0.35,
+        0.35 + random.nextDouble() * 0.25,
+      ).toColor();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeController theme = context.read<ThemeController>();
+    final SaxifyAccent preview = SaxifyAccent.custom(_primary, _deep);
+
+    return GlassPanel(
+      radius: SaxifyTheme.radiusMd,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: preview.gradient,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(
+                      'Your colour mix',
+                      style: SaxifyTheme.appleFont(size: 14, weight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 3),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${preview.primaryHex}  →  ${preview.secondaryHex}',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: SaxifyColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Surprise me',
+                onPressed: _randomise,
+                icon: const Icon(Icons.casino_outlined, size: 20),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _RgbSliders(
+            label: 'Main colour',
+            color: _primary,
+            onChanged: (Color c) => setState(() => _primary = c),
+          ),
+          _RgbSliders(
+            label: 'Deep colour',
+            color: _deep,
+            onChanged: (Color c) => setState(() => _deep = c),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: GlassButton(
+                  label: 'Apply to app',
+                  icon: Icons.brush_rounded,
+                  compact: true,
+                  onPressed: () => theme.defineCustom(_primary, _deep),
+                ),
+              ),
+              const SizedBox(width: 10),
+              GlassButton(
+                label: 'Reset',
+                icon: Icons.restart_alt_rounded,
+                filled: false,
+                compact: true,
+                onPressed: () {
+                  setState(() {
+                    _primary = SaxifyAccents.violetPulse.primary;
+                    _deep = SaxifyAccents.violetPulse.secondary;
+                  });
+                  theme.pin(SaxifyAccents.violetPulse.id);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Slide red, green and blue to mix any colour. The whole app — buttons, '
+            'glows, equalizer and the heart in the footer — follows immediately.',
+            style: TextStyle(fontSize: 11, height: 1.45, color: SaxifyColors.textFaint),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RgbSliders extends StatelessWidget {
+  const _RgbSliders({
+    required this.label,
+    required this.color,
+    required this.onChanged,
+  });
+
+  final String label;
+  final Color color;
+  final ValueChanged<Color> onChanged;
+
+  int _c(double v) => (v * 255).round().clamp(0, 255);
+
+  @override
+  Widget build(BuildContext context) {
+    final int r = _c(color.r);
+    final int g = _c(color.g);
+    final int b = _c(color.b);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const SizedBox(height: 6),
+        Text(
+          '$label · R$r G$g B$b',
+          style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textSecondary),
+        ),
+        _Channel(
+          label: 'R',
+          value: r,
+          tint: const Color(0xFFFF5A5A),
+          onChanged: (int v) => onChanged(Color.fromARGB(255, v, g, b)),
+        ),
+        _Channel(
+          label: 'G',
+          value: g,
+          tint: const Color(0xFF4ADE80),
+          onChanged: (int v) => onChanged(Color.fromARGB(255, r, v, b)),
+        ),
+        _Channel(
+          label: 'B',
+          value: b,
+          tint: const Color(0xFF60A5FA),
+          onChanged: (int v) => onChanged(Color.fromARGB(255, r, g, v)),
+        ),
+      ],
+    );
+  }
+}
+
+class _Channel extends StatelessWidget {
+  const _Channel({
+    required this.label,
+    required this.value,
+    required this.tint,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int value;
+  final Color tint;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        SizedBox(
+          width: 16,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: tint,
+            ),
+          ),
+        ),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: tint,
+              thumbColor: Colors.white,
+              overlayColor: tint.withValues(alpha: 0.18),
+            ),
+            child: Slider(
+              min: 0,
+              max: 255,
+              value: value.toDouble(),
+              onChanged: (double v) => onChanged(v.round()),
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 34,
+          child: Text(
+            '$value',
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Quick 8D switch, right in Settings.
+class _SpatialQuickTile extends StatelessWidget {
+  const _SpatialQuickTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final SpatialAudioService spatial = context.watch<SpatialAudioService>();
+    return _SwitchTile(
+      icon: Icons.surround_sound_rounded,
+      title: '8D spatial audio',
+      subtitle: spatial.enabled
+          ? '${spatial.preset.label} · ${spatial.rotationHz.toStringAsFixed(2)} Hz orbit'
+          : 'Off · pick a template in the equalizer',
+      value: spatial.enabled,
+      onChanged: spatial.setEnabled,
     );
   }
 }
@@ -675,7 +1019,7 @@ class _AboutCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SaxifyAccent accent = context.accent;
-    return NeonCard(
+    return GlassPanel(
       glow: true,
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -683,18 +1027,26 @@ class _AboutCard extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              const SaxifyLogo(size: 40),
+              const SaxifyLogo(size: 42),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    GradientText(SaxifyBranding.appName,
-                        style: GoogleFonts.spaceGrotesk(
-                            fontSize: 18, fontWeight: FontWeight.w700)),
-                    const Text('Stream beyond limits',
-                        style: TextStyle(
-                            fontSize: 11.5, color: SaxifyColors.textMuted)),
+                    GradientText(
+                      IfallBranding.appName,
+                      style: SaxifyTheme.appleFont(size: 18, weight: FontWeight.w800),
+                    ),
+                    Text(
+                      IfallBranding.tagline,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: SaxifyColors.textMuted,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -702,11 +1054,15 @@ class _AboutCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           const Text(
-            'Saxify is a clean and simple music experience built for people who '
-            'want to discover and listen to music without unnecessary '
-            'distractions. Play ad-free music with a focused and minimal '
-            'listening experience.',
-            style: TextStyle(fontSize: 12.5, height: 1.55, color: SaxifyColors.textSecondary),
+            'IfallMusic is a clean, premium music experience: search and play any '
+            'song, save it for offline listening, shape the sound with the studio '
+            'equalizer and 8D spatial templates, and let the whole app change colour '
+            'with you — on a deep black canvas made for colour.',
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.55,
+              color: SaxifyColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 14),
           const Wrap(
@@ -716,10 +1072,10 @@ class _AboutCard extends StatelessWidget {
               _FeatureChip('Search songs easily'),
               _FeatureChip('Discover artists'),
               _FeatureChip('Background playback'),
-              _FeatureChip('Favourites'),
+              _FeatureChip('Offline downloads'),
               _FeatureChip('Playlists'),
-              _FeatureChip('Listening history'),
-              _FeatureChip('Auto-next'),
+              _FeatureChip('8D spatial audio'),
+              _FeatureChip('Liquid glass UI'),
             ],
           ),
           const SizedBox(height: 16),
@@ -730,35 +1086,40 @@ class _AboutCard extends StatelessWidget {
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    Text('App version',
-                        style: TextStyle(
-                            fontSize: 12.5, color: SaxifyColors.textSecondary)),
+                    Text(
+                      'App version',
+                      style: TextStyle(fontSize: 12.5, color: SaxifyColors.textSecondary),
+                    ),
                     SizedBox(height: 2),
-                    Text('Saxify · ${SaxifyBranding.versionLabel}',
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700)),
+                    Text(
+                      'IfallMusic · ${IfallBranding.versionLabel}',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
                   ],
                 ),
               ),
               TextButton(
                 onPressed: () => showAboutDialog(
                   context: context,
-                  applicationName: 'Saxify',
-                  applicationVersion: SaxifyBranding.versionLabel,
+                  applicationName: IfallBranding.appName,
+                  applicationVersion: IfallBranding.versionLabel,
                   applicationIcon: const SaxifyLogo(size: 46),
-                  children: <Widget>[
-                    const Text(
-                      'Saxify streams audio from YouTube. All artwork and '
-                      'metadata belong to their respective owners. Saxify is not '
+                  children: const <Widget>[
+                    Text(
+                      'IfallMusic streams audio from YouTube. All artwork and '
+                      'metadata belong to their respective owners. IfallMusic is not '
                       'affiliated with, or endorsed by, any third-party streaming '
                       'service.',
                       style: TextStyle(fontSize: 12.5, height: 1.5),
                     ),
                   ],
                 ),
-                child: Text('Legal',
-                    style: TextStyle(color: accent.primary, fontSize: 12.5)),
+                child: Text(
+                  'Legal',
+                  style: TextStyle(color: accent.primary, fontSize: 12.5),
+                ),
               ),
             ],
           ),
@@ -766,12 +1127,95 @@ class _AboutCard extends StatelessWidget {
           _SettingTile(
             icon: Icons.mail_outline_rounded,
             title: 'Contact / Report a problem',
-            subtitle: 'Open email with an issue example or suggestion',
-            trailing: const Icon(Icons.chevron_right_rounded,
-                color: SaxifyColors.textFaint),
+            subtitle: 'Opens email with normal spaces — no "+" signs',
             onTap: () => _showReportDialog(context),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Made with ❤️ by Siddharth ifallertzia" — the heart keeps changing colour
+/// with the app's appearance, exactly like the reference site.
+class _MadeWithLoveFooter extends StatefulWidget {
+  const _MadeWithLoveFooter();
+
+  @override
+  State<_MadeWithLoveFooter> createState() => _MadeWithLoveFooterState();
+}
+
+class _MadeWithLoveFooterState extends State<_MadeWithLoveFooter>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 8),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final SaxifyAccent accent = context.accent;
+    final List<SaxifyAccent> palette = SaxifyAccents.all;
+    final int index = palette.indexWhere((SaxifyAccent a) => a.id == accent.id);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 26, 4, 8),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (BuildContext context, _) {
+          // Rotates the heart through the current accent and the next colours so
+          // it is always in sync with whatever theme the app is wearing.
+          final double t = _controller.value;
+          final SaxifyAccent from = index >= 0 ? palette[index] : accent;
+          final SaxifyAccent to = palette[(math.max(index, 0) + 1) % palette.length];
+          final Color heart = Color.lerp(
+            from.primary,
+            t < 0.5 ? to.primary : from.secondary,
+            Curves.easeInOut.transform(t < 0.5 ? t * 2 : (1 - t) * 2),
+          )!;
+
+          return Column(
+            children: <Widget>[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    'Made with ',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: SaxifyColors.textSecondary,
+                      shadows: <Shadow>[
+                        Shadow(color: heart.withValues(alpha: 0.35), blurRadius: 12),
+                      ],
+                    ),
+                  ),
+                  Transform.scale(
+                    scale: 1 + 0.06 * math.sin(t * math.pi * 2),
+                    child: Icon(Icons.favorite_rounded, size: 15, color: heart),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'by ${IfallBranding.author}',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.1,
+                  color: heart,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -784,16 +1228,7 @@ class _FeatureChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: SaxifyColors.surfaceAlt,
-        border: Border.all(color: SaxifyColors.border),
-      ),
-      child: Text(label,
-          style: const TextStyle(fontSize: 10.5, color: SaxifyColors.textSecondary)),
-    );
+    return GlassTag(label);
   }
 }
 
@@ -807,19 +1242,77 @@ class _PanelHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 22, 4, 10),
+      padding: const EdgeInsets.fromLTRB(4, 24, 4, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(title,
-              style: GoogleFonts.spaceGrotesk(
-                  fontSize: 17, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: SaxifyTheme.appleFont(
+              size: 18,
+              weight: FontWeight.w700,
+              letterSpacing: -0.4,
+            ),
+          ),
           const SizedBox(height: 3),
-          Text(subtitle,
-              style: const TextStyle(
-                  fontSize: 12, color: SaxifyColors.textMuted)),
+          Text(
+            subtitle,
+            style: const TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// Shared leading icon badge for the setting rows.
+class _TileIcon extends StatelessWidget {
+  const _TileIcon(this.icon);
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final SaxifyAccent accent = context.accent;
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: accent.primary.withValues(alpha: 0.20),
+        border: Border.all(color: accent.primary.withValues(alpha: 0.32)),
+      ),
+      child: Icon(icon, size: 19, color: accent.primary),
+    );
+  }
+}
+
+class _TileText extends StatelessWidget {
+  const _TileText({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
+        ),
+      ],
     );
   }
 }
@@ -841,51 +1334,12 @@ class _SettingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SaxifyAccent accent = context.accent;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: NeonCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        onTap: onTap,
-        child: Row(
-          children: <Widget>[
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: accent.primary.withValues(alpha: 0.28),
-                border: Border.all(color: accent.primary.withValues(alpha: 0.35)),
-              ),
-              child: Icon(icon, size: 18, color: accent.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted)),
-                ],
-              ),
-            ),
-            if (trailing != null) ...<Widget>[
-              const SizedBox(width: 6),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 76),
-                child: trailing!,
-              ),
-            ],
-          ],
-        ),
-      ),
+    return GlassListTile(
+      onTap: onTap,
+      leading: _TileIcon(icon),
+      trailing: trailing ??
+          const Icon(Icons.chevron_right_rounded, size: 18, color: SaxifyColors.textFaint),
+      child: _TileText(title: title, subtitle: subtitle),
     );
   }
 }
@@ -907,45 +1361,10 @@ class _SwitchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SaxifyAccent accent = context.accent;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: NeonCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        child: Row(
-          children: <Widget>[
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: accent.primary.withValues(alpha: 0.28),
-                border: Border.all(color: accent.primary.withValues(alpha: 0.35)),
-              ),
-              child: Icon(icon, size: 18, color: accent.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted)),
-                ],
-              ),
-            ),
-            const SizedBox(width: 6),
-            Switch(value: value, onChanged: onChanged),
-          ],
-        ),
-      ),
+    return GlassListTile(
+      leading: _TileIcon(icon),
+      trailing: Switch(value: value, onChanged: onChanged),
+      child: _TileText(title: title, subtitle: subtitle),
     );
   }
 }
@@ -970,64 +1389,38 @@ class _ChoiceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SaxifyAccent accent = context.accent;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: NeonCard(
-        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    color: accent.primary.withValues(alpha: 0.28),
-                    border: Border.all(color: accent.primary.withValues(alpha: 0.35)),
-                  ),
-                  child: Icon(icon, size: 18, color: accent.primary),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 2),
-                      Text(subtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted)),
-                    ],
+    return GlassPanel(
+      radius: SaxifyTheme.radiusMd,
+      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              _TileIcon(icon),
+              const SizedBox(width: 12),
+              Expanded(child: _TileText(title: title, subtitle: subtitle)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              for (final String choice in choices)
+                ChoiceChip(
+                  label: Text(choice.toUpperCase()),
+                  selected: choice == value,
+                  onSelected: (_) => onChanged(choice),
+                  labelStyle: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: choice == value ? accent.primary : SaxifyColors.textMuted,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: <Widget>[
-                for (final String choice in choices)
-                  ChoiceChip(
-                    label: Text(choice.toUpperCase()),
-                    selected: choice == value,
-                    onSelected: (_) => onChanged(choice),
-                    labelStyle: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: choice == value ? accent.primary : SaxifyColors.textMuted,
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }

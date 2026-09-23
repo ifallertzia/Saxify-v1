@@ -7,7 +7,7 @@ import '../../core/theme/saxify_theme.dart';
 /// Network artwork that reuses one [ImageProvider] everywhere.
 ///
 /// A route push used to rebuild [Image.network] and flash white. The shared
-/// provider plus the Saxify logo fallback keeps the sleeve visible.
+/// provider plus the IfallMusic logo fallback keeps the sleeve visible.
 class Artwork extends StatelessWidget {
   const Artwork({
     super.key,
@@ -78,7 +78,7 @@ class _Fallback extends StatelessWidget {
           ),
         ),
         Image.asset(
-          SaxifyBranding.logoAsset,
+          IfallBranding.logoAsset,
           fit: BoxFit.contain,
           errorBuilder: (BuildContext context, Object error, StackTrace? stack) =>
               Icon(icon, color: SaxifyColors.textFaint, size: radius * 1.6),

@@ -19,7 +19,7 @@ class NotificationBootstrap {
     try {
       await JustAudioBackground.init(
         androidNotificationChannelId: 'com.saxify.app.audio',
-        androidNotificationChannelName: 'Saxify playback',
+        androidNotificationChannelName: 'IfallMusic playback',
         androidNotificationChannelDescription: 'Play, pause, skip and seek',
         androidNotificationOngoing: true,
         androidStopForegroundOnPause: true,
@@ -29,7 +29,7 @@ class NotificationBootstrap {
       active = true;
       return true;
     } catch (e) {
-      debugPrint('[Saxify][Notify] init skipped: $e');
+      debugPrint('[IfallMusic][Notify] init skipped: $e');
       active = false;
       return false;
     }
@@ -44,7 +44,7 @@ class NotificationBootstrap {
       if (status.isGranted || status.isLimited) return;
       await Permission.notification.request();
     } catch (e) {
-      debugPrint('[Saxify][Notify] permission: $e');
+      debugPrint('[IfallMusic][Notify] permission: $e');
     }
   }
 }

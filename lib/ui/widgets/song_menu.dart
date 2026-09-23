@@ -42,7 +42,7 @@ class _SongSheet extends StatelessWidget {
     final PlaybackService playback = context.read<PlaybackService>();
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      const SnackBar(content: Text('Saving to Download/Saxify. Playback keeps going.')),
+      const SnackBar(content: Text('Saving to Download/IfallMusic. Playback keeps going.')),
     );
     final MusicDownloadJob job =
         await context.read<MusicDownloadService>().enqueue(song, playback);
@@ -51,7 +51,7 @@ class _SongSheet extends StatelessWidget {
       MusicDownloadPhase.done => 'Song Downloads folder mein save ho gaya!',
       MusicDownloadPhase.failed => job.error ?? 'Could not save that song. Playback keeps going.',
       MusicDownloadPhase.cancelled => 'Download cancelled. Playback keeps going.',
-      _ => 'Saving to Download/Saxify. Playback keeps going.',
+      _ => 'Saving to Download/IfallMusic. Playback keeps going.',
     };
     messenger
       ..hideCurrentSnackBar()

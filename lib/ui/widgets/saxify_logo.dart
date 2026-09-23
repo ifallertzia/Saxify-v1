@@ -3,9 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../config/branding.dart';
 import '../../core/theme/saxify_accents.dart';
 
-/// Saxify's own mark — a neon "S" soundwave on a rounded gradient tile.
+/// IfallMusic's own mark — a neon "S" soundwave on a rounded gradient tile.
 ///
 /// Drawn with [CustomPainter] so it stays razor sharp at every size and picks up
 /// whatever accent the app is wearing right now. It is an original design; it
@@ -171,7 +172,7 @@ class SaxifyWordmark extends StatelessWidget {
               shaderCallback: (Rect bounds) =>
                   effective.horizontalGradient.createShader(bounds),
               child: Text(
-                'Saxify',
+                IfallBranding.appName,
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: fontSize,
                   fontWeight: FontWeight.w700,

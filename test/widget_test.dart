@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:saxify/core/models/album_card.dart';
-import 'package:saxify/core/theme/saxify_accents.dart';
-import 'package:saxify/core/utils/format.dart';
-import 'package:saxify/ui/widgets/saxify_logo.dart';
+import 'package:ifallmusic/core/models/album_card.dart';
+import 'package:ifallmusic/core/theme/saxify_accents.dart';
+import 'package:ifallmusic/core/utils/format.dart';
+import 'package:ifallmusic/ui/widgets/saxify_logo.dart';
 
 void main() {
   group('AlbumCard ytq codec', () {
@@ -53,10 +53,27 @@ void main() {
   });
 
   group('accents', () {
-    test('six accents ship and byId falls back', () {
-      expect(SaxifyAccents.all.length, 6);
-      expect(SaxifyAccents.byId('neon-violet'), SaxifyAccents.neonViolet);
-      expect(SaxifyAccents.byId('nope'), SaxifyAccents.neonViolet);
+    test('the deep palette ships, including Silver, and byId falls back', () {
+      expect(SaxifyAccents.all.length, 18);
+      expect(SaxifyAccents.all.contains(SaxifyAccents.silver), isTrue);
+      expect(SaxifyAccents.byId('violet-pulse'), SaxifyAccents.violetPulse);
+      expect(SaxifyAccents.byId('nope'), SaxifyAccents.violetPulse);
+    });
+
+    test('light accents use black ink so text stays readable', () {
+      expect(SaxifyAccents.silver.onAccent, const Color(0xFF000000));
+      expect(SaxifyAccents.violetPulse.onAccent, const Color(0xFFFFFFFF));
+    });
+
+    test('a custom mix keeps the custom id and both colours', () {
+      final SaxifyAccent mix = SaxifyAccent.custom(
+        const Color(0xFF123456),
+        const Color(0xFF654321),
+      );
+      expect(mix.id, SaxifyAccent.customAccentId);
+      expect(mix.custom, isTrue);
+      expect(mix.primary, const Color(0xFF123456));
+      expect(mix.secondary, const Color(0xFF654321));
     });
   });
 

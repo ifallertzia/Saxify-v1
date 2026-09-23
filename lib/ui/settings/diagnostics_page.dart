@@ -1,109 +1,139 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../config/backend_config.dart';
 import '../../config/branding.dart';
-import '../../core/services/boot_log.dart';
-import '../../core/services/settings_service.dart';
+import '../../core/services/spatial_audio_service.dart';
+import '../../core/theme/glass.dart';
 import '../../core/theme/saxify_theme.dart';
-import '../../downloader/universal_downloader.dart';
-import '../widgets/search_fab.dart';
+import '../widgets/neon.dart';
 
-class DiagnosticsPage extends StatefulWidget {
+/// App diagnostics — deliberately short and human readable.
+///
+/// The old build let you point the app at a remote downloader backend and then
+/// reported on it here. That whole section is gone: nothing in IfallMusic
+/// depends on a server, so there is nothing to poll.
+class DiagnosticsPage extends StatelessWidget {
   const DiagnosticsPage({super.key, required this.safeMode});
 
   final bool safeMode;
 
   @override
-  State<DiagnosticsPage> createState() => _DiagnosticsPageState();
+  Widget build(BuildContext context) {
+    final SpatialAudioService spatial = context.watch<SpatialAudioService>();
+    return AuroraBackdrop(
+      intensity: 0.4,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: const Text('Diagnostics')),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 60),
+          children: <Widget>[
+            GlassPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      const Icon(Icons.info_outline_rounded, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '${IfallBranding.appName} ${IfallBranding.versionLabel}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    safeMode
+                        ? 'Safe mode is on — heavy startup steps were skipped. Playback still works.'
+                        : 'Everything is running normally.',
+                    style: const TextStyle(
+                      color: SaxifyColors.textMuted,
+                      fontSize: 12.5,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            GlassPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Text('Audio', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 10),
+                  _Row(
+                    label: '8D spatial audio',
+                    value: spatial.enabled
+                        ? '${spatial.preset.label} · ${spatial.rotationHz.toStringAsFixed(2)} Hz'
+                        : 'Off',
+                  ),
+                  const SizedBox(height: 6),
+                  _Row(
+                    label: 'Download folder',
+                    value: 'Download/${IfallBranding.downloadFolderName}',
+                  ),
+                  const SizedBox(height: 6),
+                  const _Row(label: 'Downloads', value: 'On-device · no backend'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            GlassPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Text('Branding', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Logo ${IfallBranding.logoWidth.toInt()}×${IfallBranding.logoHeight.toInt()} '
+                    '${IfallBranding.logoFormat}\n${IfallBranding.logoAsset}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      height: 1.5,
+                      color: SaxifyColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _DiagnosticsPageState extends State<DiagnosticsPage> {
-  String _log = '';
-  final TextEditingController _url = TextEditingController();
+class _Row extends StatelessWidget {
+  const _Row({required this.label, required this.value});
 
-  @override
-  void initState() {
-    super.initState();
-    _url.text = context.read<SettingsService>().downloaderBaseUrl;
-    BootLog.tail().then((String value) {
-      if (mounted) setState(() => _log = value);
-    });
-  }
-
-  @override
-  void dispose() {
-    _url.dispose();
-    super.dispose();
-  }
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    final SettingsService settings = context.watch<SettingsService>();
-    final UniversalDownloader downloader = context.watch<UniversalDownloader>();
-    final health = downloader.health;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Diagnostics'),
-        actions: const <Widget>[SaxifySearchButton()],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-        children: <Widget>[
-          Text('${SaxifyBranding.appName} ${SaxifyBranding.versionLabel}',
-              style: const TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-          Text(
-            widget.safeMode ? 'Safe mode is on. Heavy startup was skipped.' : 'Normal startup.',
-            style: const TextStyle(color: SaxifyColors.textMuted, fontSize: 12),
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12.5, color: SaxifyColors.textSecondary),
           ),
-          const SizedBox(height: 16),
-          const Text('Downloader backend', style: TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _url,
-            decoration: const InputDecoration(hintText: 'https://…'),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            value,
+            maxLines: 2,
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
           ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () async {
-                await settings.setDownloaderBaseUrl(_url.text.trim());
-                if (!context.mounted) return;
-                context.read<UniversalDownloader>().api.baseUrl = settings.downloaderBaseUrl;
-                await context.read<UniversalDownloader>().refreshHealth();
-              },
-              child: const Text('Save & check'),
-            ),
-          ),
-          Text(
-            health == null
-                ? 'Not checked yet.'
-                : 'status: ${health.ok ? 'ok' : 'down'}\n'
-                    'app: ${health.app.isEmpty ? '—' : health.app}'
-                    '${health.branded ? '' : ' (expected ${BackendConfig.expectedDownloaderApp})'}\n'
-                    'version: ${health.version.isEmpty ? '—' : health.version}'
-                    ' (expected ${BackendConfig.expectedDownloaderVersion})\n'
-                    'ffmpeg: ${health.ffmpeg}\nyt_dlp: ${health.ytDlp}'
-                    '${health.error == null ? '' : '\n${health.error}'}',
-            style: const TextStyle(fontSize: 12.5, height: 1.45, color: SaxifyColors.textSecondary),
-          ),
-          const SizedBox(height: 18),
-          const Text('Boot log', style: TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          Text(
-            _log.isEmpty ? 'No boot log yet.' : _log,
-            style: const TextStyle(fontSize: 11, height: 1.4, color: SaxifyColors.textMuted),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'Logo ${SaxifyBranding.logoWidth.toInt()}×${SaxifyBranding.logoHeight.toInt()} '
-            '${SaxifyBranding.logoFormat}\n${SaxifyBranding.logoAsset}',
-            style: const TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

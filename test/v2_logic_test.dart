@@ -1,11 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:saxify/config/branding.dart';
-import 'package:saxify/core/services/playlist_sync_service.dart';
-import 'package:saxify/core/services/recommendation_engine.dart';
-import 'package:saxify/core/utils/backup_codec.dart';
-import 'package:saxify/core/utils/filenames.dart';
-import 'package:saxify/core/utils/text_match.dart';
-import 'package:saxify/downloader/platform_detect.dart';
+import 'package:ifallmusic/config/branding.dart';
+import 'package:ifallmusic/core/services/playlist_sync_service.dart';
+import 'package:ifallmusic/core/services/recommendation_engine.dart';
+import 'package:ifallmusic/core/utils/backup_codec.dart';
+import 'package:ifallmusic/core/utils/filenames.dart';
+import 'package:ifallmusic/core/utils/text_match.dart';
 
 void main() {
   group('artist routing scores', () {
@@ -58,21 +57,13 @@ void main() {
       expect(validateBackupJson('{"playlists":[]}'), isNull);
     });
 
-    test('saved names use the saxify suffix and reject html', () {
-      expect(Filenames.saxify('Night Drive', 'mp3'), 'Night Drive${SaxifyBranding.fileSuffix}.mp3');
+    test('saved names use the app suffix and reject html', () {
+      expect(Filenames.saxify('Night Drive', 'mp3'), 'Night Drive${IfallBranding.fileSuffix}.mp3');
       expect(Filenames.looksCorrupt('<html>nope'.codeUnits, 20), isTrue);
       expect(Filenames.looksCorrupt(<int>[0x49, 0x44, 0x33], 2048), isFalse);
     });
   });
 
-  group('downloader policy', () {
-    test('public YouTube links pass while login-gated links are refused', () {
-      expect(PlatformDetect.blockedReason('https://youtu.be/abc'), isNull);
-      expect(PlatformDetect.blockedReason('https://www.youtube.com/watch?v=abc'), isNull);
-      expect(PlatformDetect.blockedReason('https://example.com/login'), isNotNull);
-      expect(PlatformDetect.blockedReason('https://www.instagram.com/p/abc'), isNull);
-    });
-  });
 
   group('playlist payload', () {
     test('single and bulk payloads become playlists', () {

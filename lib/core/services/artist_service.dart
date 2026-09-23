@@ -91,7 +91,7 @@ class ArtistService {
       }
       return best;
     } catch (e) {
-      debugPrint('[Saxify][Artist] deezer: $e');
+      debugPrint('[IfallMusic][Artist] deezer: $e');
       return null;
     }
   }
@@ -128,7 +128,7 @@ class ArtistService {
       }
       return best;
     } catch (e) {
-      debugPrint('[Saxify][Artist] itunes: $e');
+      debugPrint('[IfallMusic][Artist] itunes: $e');
       return null;
     }
   }
@@ -153,10 +153,10 @@ class ArtistService {
         );
       }
     } catch (e) {
-      debugPrint('[Saxify][Artist] youtube logo: $e');
+      debugPrint('[IfallMusic][Artist] youtube logo: $e');
     }
     return null;
   }
 
-  String fallbackAsset() => SaxifyBranding.logoAsset;
+  String fallbackAsset() => IfallBranding.logoAsset;
 }

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/playback_service.dart';
+import '../../core/services/music_download_service.dart';
 import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
@@ -42,9 +43,12 @@ class SongTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final PlaybackService playback = context.watch<PlaybackService>();
     final LibraryService library = context.watch<LibraryService>();
+    final MusicDownloadService downloads = context.watch<MusicDownloadService>();
     final SaxifyAccent accent = context.accent;
 
     final bool isCurrent = playback.current?.id == song.id;
+    final MusicDownloadJob? job = downloads.jobFor(song.id);
+    final bool isDownloading = job?.phase == MusicDownloadPhase.running;
     final bool liked = library.isLiked(song.id);
 
     final String secondLine = <String>[
@@ -61,7 +65,7 @@ class SongTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: dense ? 12 : 14,
+            horizontal: dense ? 10 : 12,
             vertical: dense ? 6 : 9,
           ),
           child: Row(
@@ -122,13 +126,33 @@ class SongTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      secondLine,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 12, color: SaxifyColors.textMuted),
-                    ),
+                    if (isDownloading)
+                      Row(
+                        children: <Widget>[
+                          Icon(Icons.download_rounded, size: 12, color: accent.primary),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              'Downloading ${(job!.fraction * 100).round()}%',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: accent.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Text(
+                        secondLine,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 12, color: SaxifyColors.textMuted),
+                      ),
                   ],
                 ),
               ),

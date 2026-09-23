@@ -70,7 +70,7 @@ class MusicDownloadJob {
 }
 
 /// Downloads a song using the same stream resolver as the player, then keeps
-/// an app-private copy for offline playback and a public Download/Saxify copy
+/// an app-private copy for offline playback and a public Download/IfallMusic copy
 /// where the platform supports it. Downloading never touches play/pause/seek.
 class MusicDownloadService extends ChangeNotifier {
   MusicDownloadService({Dio? dio, SharedPreferences? prefs})
@@ -106,6 +106,15 @@ class MusicDownloadService extends ChangeNotifier {
   bool isDownloaded(String songId) =>
       downloaded.any((MusicDownloadJob job) => job.song.id == songId);
 
+  /// Older builds saved the offline copy under `…/Saxify/Music`. The folder is
+  /// now `…/IfallMusic/Music`, so an existing download is re-pointed instead of
+  /// vanishing from the list.
+  static String _migratePath(String path) {
+    final String legacy = '/${String.fromCharCodes(const <int>[83, 97, 120, 105, 102, 121])}/';
+    if (!path.contains(legacy)) return path;
+    return path.replaceAll(legacy, '/${IfallBranding.downloadFolderName}/');
+  }
+
   List<MusicDownloadJob> _readJobs() {
     final String? raw = _prefs?.getString(_historyKey);
     if (raw == null || raw.isEmpty) return <MusicDownloadJob>[];
@@ -116,13 +125,20 @@ class MusicDownloadService extends ChangeNotifier {
           .whereType<Map>()
           .map((Map item) => MusicDownloadJob.fromJson(item.cast<String, dynamic>()))
           .whereType<MusicDownloadJob>()
+          .map((MusicDownloadJob job) {
+            final String? path = job.offlinePath;
+            if (path == null) return job;
+            final String migrated = _migratePath(path);
+            if (migrated != path) job.offlinePath = migrated;
+            return job;
+          })
           .where((MusicDownloadJob job) =>
               job.phase == MusicDownloadPhase.done &&
               job.offlinePath != null &&
               File(job.offlinePath!).existsSync())
           .toList();
     } catch (e) {
-      debugPrint('[Saxify][MusicDownloads] history read failed: $e');
+      debugPrint('[IfallMusic][MusicDownloads] history read failed: $e');
       return <MusicDownloadJob>[];
     }
   }
@@ -228,7 +244,7 @@ class MusicDownloadService extends ChangeNotifier {
       }
 
       final Directory documents = await getApplicationDocumentsDirectory();
-      final Directory privateFolder = Directory('${documents.path}/${SaxifyBranding.downloadFolderName}/Music');
+      final Directory privateFolder = Directory('${documents.path}/${IfallBranding.downloadFolderName}/Music');
       if (!privateFolder.existsSync()) privateFolder.createSync(recursive: true);
       final File offlineFile = File('${privateFolder.path}/$filename');
       if (offlineFile.existsSync()) await offlineFile.delete();
@@ -244,7 +260,7 @@ class MusicDownloadService extends ChangeNotifier {
           mime: 'audio/mpeg',
         );
       } catch (e) {
-        debugPrint('[Saxify][MusicDownloads] public copy failed: $e');
+        debugPrint('[IfallMusic][MusicDownloads] public copy failed: $e');
       }
       job.savedPath = publicFile?.path;
       job.savedUri = publicFile?.uri;
@@ -297,7 +313,7 @@ class MusicDownloadService extends ChangeNotifier {
         final File offline = File(job.offlinePath!);
         if (offline.existsSync()) await offline.delete();
       } catch (e) {
-        debugPrint('[Saxify][MusicDownloads] private delete failed: $e');
+        debugPrint('[IfallMusic][MusicDownloads] private delete failed: $e');
       }
     }
     try {
@@ -305,7 +321,7 @@ class MusicDownloadService extends ChangeNotifier {
         await NativeBridge.deleteDownload(uri: job.savedUri, path: job.savedPath);
       }
     } catch (e) {
-      debugPrint('[Saxify][MusicDownloads] public delete failed: $e');
+      debugPrint('[IfallMusic][MusicDownloads] public delete failed: $e');
     }
     playback?.forgetOfflineSong(job.song.id);
     jobs.remove(job);

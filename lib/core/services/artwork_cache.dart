@@ -8,7 +8,7 @@ class ArtworkCache {
   ArtworkCache._();
 
   static final Map<String, ImageProvider> _providers = <String, ImageProvider>{};
-  static const ImageProvider logo = AssetImage(SaxifyBranding.logoAsset);
+  static const ImageProvider logo = AssetImage(IfallBranding.logoAsset);
 
   static ImageProvider providerFor(String url) {
     if (url.isEmpty) return logo;

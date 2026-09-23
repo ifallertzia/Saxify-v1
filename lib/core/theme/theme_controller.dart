@@ -1,20 +1,21 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
-import '../theme/saxify_accents.dart';
 import '../services/settings_service.dart';
+import 'saxify_accents.dart';
 
-/// Owns "which neon accent is the app wearing right now".
+/// Owns "which colour is IfallMusic wearing right now".
 ///
-/// Two modes, exactly like the web app's Appearance panel:
-///  * **auto** — cycles through the 6 accents every ~2.5 minutes so the app
-///    keeps changing its look on its own.
-///  * **pinned** — the user tapped a swatch in Settings, so the accent stays
-///    put until they turn auto-rotation back on.
+/// Three modes, matching the Appearance panel in Settings:
+///  * **auto** — cycles through the palette so the app keeps changing its look
+///    on its own (default every 2.5 minutes).
+///  * **pinned** — the listener tapped a swatch, so the colour stays put.
+///  * **custom** — the listener built their own RGB mix with the colour editor.
 class ThemeController extends ChangeNotifier {
   ThemeController(this._settings) {
     _index = SaxifyAccents.indexOfId(_settings.accentId);
+    _custom = _readCustom();
     if (_settings.autoRotateTheme) _startTimer();
   }
 
@@ -22,8 +23,25 @@ class ThemeController extends ChangeNotifier {
 
   int _index = 0;
   Timer? _timer;
+  SaxifyAccent? _custom;
+  DateTime _lastSwitch = DateTime.now();
 
-  SaxifyAccent get accent => SaxifyAccents.all[_index];
+  SaxifyAccent? _readCustom() {
+    final int? primary = _settings.customAccentPrimary;
+    final int? secondary = _settings.customAccentSecondary;
+    if (primary == null || secondary == null) return null;
+    return SaxifyAccent.custom(Color(primary), Color(secondary));
+  }
+
+  bool get usingCustom => _settings.accentId == SaxifyAccent.customAccentId;
+
+  SaxifyAccent get accent =>
+      usingCustom && _custom != null ? _custom! : SaxifyAccents.all[_index];
+
+  /// The palette entry the swatch grid should mark as selected (null when the
+  /// listener is on their own mix).
+  String? get selectedId => usingCustom ? null : accent.id;
+
   int get index => _index;
   bool get autoRotate => _settings.autoRotateTheme;
   Duration get rotateInterval => Duration(seconds: _settings.rotateSeconds);
@@ -36,10 +54,7 @@ class ThemeController extends ChangeNotifier {
     return remaining < 0 ? 0 : remaining;
   }
 
-  DateTime _lastSwitch = DateTime.now();
-
-  /// Pin a specific accent. Turns auto-rotation off — the user asked for this
-  /// exact colour.
+  /// Swatches only show palette colours.
   Future<void> pin(String accentId) async {
     await _stopTimer();
     _index = SaxifyAccents.indexOfId(accentId);
@@ -48,9 +63,33 @@ class ThemeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The listener's own colour mix (RGB editor in Settings).
+  Future<void> defineCustom(Color primary, Color secondary) async {
+    _custom = SaxifyAccent.custom(primary, secondary);
+    await _settings.setCustomAccent(
+      primary: _argb(primary),
+      secondary: _argb(secondary),
+    );
+    await _stopTimer();
+    await _settings.setAccentId(SaxifyAccent.customAccentId);
+    await _settings.setAutoRotateTheme(false);
+    notifyListeners();
+  }
+
+  /// ARGB int without relying on version-specific Color helpers.
+  static int _argb(Color color) =>
+      (0xFF << 24) |
+      ((color.r * 255).round() << 16) |
+      ((color.g * 255).round() << 8) |
+      (color.b * 255).round();
+
   Future<void> setAutoRotate(bool value) async {
     await _settings.setAutoRotateTheme(value);
     if (value) {
+      if (usingCustom) {
+        // Auto rotate only makes sense over the palette.
+        _index = SaxifyAccents.all.length - 1;
+      }
       await _settings.setAccentId(accent.id);
       _startTimer();
     } else {
@@ -65,8 +104,16 @@ class ThemeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Jump to the next accent (also what the auto timer calls).
+  /// Jump to the next colour (also what the auto timer calls).
   Future<void> cycle({bool persist = true}) async {
+    if (usingCustom) {
+      // Leaving the custom mix for the rotation.
+      _index = 0;
+      if (persist) await _settings.setAccentId(SaxifyAccents.all.first.id);
+      _lastSwitch = DateTime.now();
+      notifyListeners();
+      return;
+    }
     _index = (_index + 1) % SaxifyAccents.all.length;
     _lastSwitch = DateTime.now();
     if (persist) await _settings.setAccentId(accent.id);

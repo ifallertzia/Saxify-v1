@@ -22,14 +22,14 @@ class RecommendationStore {
         onCreate: _create,
       ).timeout(const Duration(seconds: 3));
     } catch (e) {
-      debugPrint('[Saxify][Reco] open failed, recreating: $e');
+      debugPrint('[IfallMusic][Reco] open failed, recreating: $e');
       try {
         await deleteDatabase(path);
         _db = await openDatabase(path, version: 1, onCreate: _create)
             .timeout(const Duration(seconds: 3));
         recovered = true;
       } catch (e2) {
-        debugPrint('[Saxify][Reco] recreate failed: $e2');
+        debugPrint('[IfallMusic][Reco] recreate failed: $e2');
       }
     }
     await _purgeOldSearches();
@@ -242,7 +242,7 @@ class RecommendationStore {
     try {
       await db.delete('search_history', where: 'timestamp < ?', whereArgs: <Object>[cutoff]);
     } catch (e) {
-      debugPrint('[Saxify][Reco] purge failed: $e');
+      debugPrint('[IfallMusic][Reco] purge failed: $e');
     }
   }
 }

@@ -6,13 +6,16 @@
     <!-- Phase 2: in-app update — needed to install the downloaded APK -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
+    <!-- 8D spatial audio attaches Virtualizer / EnvironmentalReverb to the output mix. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+
     <!-- Notification player. Playback itself stays on the existing AudioPlayer. -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-    <!-- Android 9 and below only. Android 10+ writes Download/Saxify via MediaStore. -->
+    <!-- Android 9 and below only. Android 10+ writes Download/IfallMusic via MediaStore. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
 
@@ -32,7 +35,7 @@
     </queries>
 
     <application
-        android:label="Saxify"
+        android:label="IfallMusic"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">

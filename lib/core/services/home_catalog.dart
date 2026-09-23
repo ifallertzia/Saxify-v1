@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/album_card.dart';
 import '../models/artist.dart';
 import '../models/song.dart';
+import 'artist_service.dart';
 import 'library_service.dart';
 import 'youtube_service.dart';
 
@@ -13,12 +16,56 @@ import 'youtube_service.dart';
 /// the same rails — "Made for you" and "Recommended" are personalised from what
 /// you actually listened to, the rest mirror the site's curated shelves.
 class HomeCatalog extends ChangeNotifier {
-  HomeCatalog({required YoutubeService youtube, required LibraryService library})
-      : _youtube = youtube,
-        _library = library;
+  HomeCatalog({
+    required YoutubeService youtube,
+    required LibraryService library,
+    ArtistService? artists,
+  })  : _youtube = youtube,
+        _library = library,
+        _artists = artists;
 
   final YoutubeService _youtube;
   final LibraryService _library;
+  final ArtistService? _artists;
+
+  /// Real artist faces for the Top artists rail. The rail used to fall back to
+  /// the app logo because every [ArtistRef] shipped with an empty image — this
+  /// map is filled from Deezer/iTunes the first time Home loads.
+  final Map<String, String> artistPhotos = <String, String>{};
+
+  /// Photo for an artist name: resolved face first, then whatever the model
+  /// carried, otherwise empty (the widget then draws initials, never the logo).
+  String photoFor(String name, {String fallback = ''}) {
+    final String resolved = artistPhotos[name] ?? '';
+    if (resolved.isNotEmpty) return resolved;
+    return fallback;
+  }
+
+  Future<void> _resolveArtistPhotos() async {
+    final ArtistService? artists = _artists;
+    if (artists == null) return;
+    final List<ArtistRef> pending = topArtists
+        .where((ArtistRef a) => (artistPhotos[a.name] ?? '').isEmpty)
+        .toList();
+    if (pending.isEmpty) return;
+    for (int start = 0; start < pending.length; start += 4) {
+      final List<ArtistRef> batch = pending.skip(start).take(4).toList();
+      await Future.wait(<Future<void>>[
+        for (final ArtistRef artist in batch)
+          () async {
+            try {
+              final ArtistProfile profile = await artists
+                  .resolve(artist.name)
+                  .timeout(const Duration(seconds: 12));
+              if (profile.imageUrl.isNotEmpty) {
+                artistPhotos[artist.name] = profile.imageUrl;
+              }
+            } catch (_) {}
+          }(),
+      ]);
+      notifyListeners();
+    }
+  }
 
   bool loading = true;
   bool refreshing = false;
@@ -79,6 +126,7 @@ class HomeCatalog extends ChangeNotifier {
     ArtistRef(channelId: '', name: 'Jubin Nautiyal', imageUrl: ''),
     ArtistRef(channelId: '', name: 'Diljit Dosanjh', imageUrl: ''),
     ArtistRef(channelId: '', name: 'Anirudh Ravichander', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'Darshan Raval', imageUrl: ''),
     ArtistRef(channelId: '', name: 'Neha Kakkar', imageUrl: ''),
     ArtistRef(channelId: '', name: 'Kishore Kumar', imageUrl: ''),
   ];
@@ -107,6 +155,14 @@ class HomeCatalog extends ChangeNotifier {
     ('Tamil', 'Tamil hit songs'),
     ('Telugu', 'Telugu hit songs'),
     ('Osho', 'Osho meditation music discourse'),
+    ('Pop', 'pop hits 2026'),
+    ('Chill', 'chill vibes songs'),
+    ('Focus', 'deep focus instrumental music'),
+    ('Party', 'party dance songs'),
+    ('Romance', 'romantic love songs'),
+    ('Classical', 'classical piano instrumental'),
+    ('Workout', 'workout edm songs'),
+    ('Lo-Fi Beats', 'lofi beats to relax'),
   ];
 
   static const List<String> _trendingQueries = <String>[
@@ -186,6 +242,9 @@ class HomeCatalog extends ChangeNotifier {
       recommended = rails[2];
       _loaded = true;
       error = null;
+      notifyListeners();
+      // Faces are fetched after the shelves so Home paints instantly.
+      unawaited(_resolveArtistPhotos());
     } catch (e) {
       error = 'Could not load your home feed. Pull down to try again.';
       debugPrint('HomeCatalog.load failed: $e');

@@ -1,21 +1,44 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
-/// Bottom-nav tab indices.
-enum SaxifyTab { home, search, library, downloader, settings }
+/// Bottom-nav tabs of IfallMusic.
+///
+/// The old build had five tabs including a "Save" section with a backend
+/// downloader. That whole section is gone — the app now has four clean tabs and
+/// downloads live where they belong: Library ▸ Downloads, plus a one-tap
+/// download button in the Home header.
+enum SaxifyTab { home, search, library, settings }
+
+/// Index of the Library tabs, kept in one place so deep links stay honest.
+class LibraryTabs {
+  const LibraryTabs._();
+
+  static const int liked = 0;
+  static const int playlists = 1;
+  static const int songs = 2;
+  static const int artists = 3;
+  static const int downloads = 4;
+  static const int history = 5;
+}
 
 /// Coordinates the shell: which tab is showing and what the search box should
-/// run. Mood chips on Home, "Show all" links and deep links all go through here
-/// so the app behaves like the site's router.
+/// run. Mood chips on Home, "Show all" links and deep links all go through here.
 class ShellController extends ChangeNotifier {
   SaxifyTab _tab = SaxifyTab.home;
   String? _pendingQuery;
   int _queryNonce = 0;
+  int _libraryTab = LibraryTabs.liked;
+  int _libraryNonce = 0;
 
   SaxifyTab get tab => _tab;
 
   /// Non-null when something asked the Search tab to run a query.
   String? get pendingQuery => _pendingQuery;
   int get queryNonce => _queryNonce;
+
+  /// Which Library tab should be open (Library ▸ Liked by default — never
+  /// surprising, never confusing).
+  int get libraryTab => _libraryTab;
+  int get libraryNonce => _libraryNonce;
 
   void select(SaxifyTab tab) {
     if (_tab == tab) return;
@@ -35,15 +58,19 @@ class ShellController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void goLibrary() {
+  void goLibrary([int? tab]) {
     _tab = SaxifyTab.library;
+    if (tab != null) {
+      _libraryTab = tab;
+      _libraryNonce++;
+    }
     notifyListeners();
   }
 
-  void goDownloader() {
-    _tab = SaxifyTab.downloader;
-    notifyListeners();
-  }
+  /// Library ▸ Downloads — the section the heart/download icon opens.
+  void goDownloads() => goLibrary(LibraryTabs.downloads);
+
+  void goLiked() => goLibrary(LibraryTabs.liked);
 
   void goSettings() {
     _tab = SaxifyTab.settings;

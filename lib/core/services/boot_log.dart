@@ -8,7 +8,7 @@ class BootLog {
   const BootLog._();
 
   static Future<void> write(String message) async {
-    debugPrint('[Saxify][Boot] $message');
+    debugPrint('[IfallMusic][Boot] $message');
     try {
       final Directory dir = await getApplicationDocumentsDirectory()
           .timeout(const Duration(seconds: 1));

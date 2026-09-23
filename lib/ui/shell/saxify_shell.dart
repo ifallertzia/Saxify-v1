@@ -1,12 +1,14 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/song.dart';
+import '../../core/services/artwork_cache.dart';
 import '../../core/services/playback_service.dart';
 import '../../core/services/recommendation_service.dart';
+import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
-import '../../core/services/artwork_cache.dart';
-import '../downloader/downloader_page.dart';
 import '../home/home_page.dart';
 import '../library/library_page.dart';
 import '../search/search_page.dart';
@@ -15,7 +17,8 @@ import '../settings/update_dialog.dart';
 import 'mini_player.dart';
 import 'shell_controller.dart';
 
-/// App shell: bottom navigation, the persistent mini player, and the four tabs.
+/// The app shell: a frosted, floating tab bar over pure black, the persistent
+/// mini player and the four sections.
 class SaxifyShell extends StatefulWidget {
   const SaxifyShell({super.key});
 
@@ -39,8 +42,8 @@ class _SaxifyShellState extends State<SaxifyShell> {
       _onRecommendations();
     });
 
-    // Phase 2: once the UI is up, quietly check GitHub Releases. Only shows a
-    // dialog when a newer version actually exists.
+    // Quietly check GitHub Releases once the UI is up. Only shows a dialog when
+    // a newer version actually exists.
     Future<void>.delayed(const Duration(seconds: 2), () {
       if (!mounted) return;
       checkAndPromptUpdate(context, silent: true);
@@ -78,7 +81,7 @@ class _SaxifyShellState extends State<SaxifyShell> {
     _dbToastShown = true;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Local data reset — playlists cloud se restore honge.'),
+        content: Text('Local cache was rebuilt. Your library is untouched.'),
       ),
     );
   }
@@ -93,56 +96,163 @@ class _SaxifyShellState extends State<SaxifyShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SaxifyColors.background,
-      extendBody: false,
-      body: Column(
+      extendBody: true,
+      body: Stack(
         children: <Widget>[
-          Expanded(
-            child: IndexedStack(
-              index: _shell.tab.index,
-              children: const <Widget>[
-                HomePage(),
-                SearchPage(),
-                LibraryPage(),
-                DownloaderPage(),
-                SettingsPage(),
+          IndexedStack(
+            index: _shell.tab.index,
+            children: const <Widget>[
+              HomePage(),
+              SearchPage(),
+              LibraryPage(),
+              SettingsPage(),
+            ],
+          ),
+          // Now playing + navigation float above the content as one glass unit.
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const _NextArtworkPrecache(),
+                const MiniPlayer(),
+                _GlassNavBar(
+                  index: _shell.tab.index,
+                  onSelect: (int i) => _shell.select(SaxifyTab.values[i]),
+                ),
               ],
             ),
           ),
-          const _NextArtworkPrecache(),
-          const MiniPlayer(),
-          NavigationBar(
-            selectedIndex: _shell.tab.index,
-            onDestinationSelected: (int i) =>
-                _shell.select(SaxifyTab.values[i]),
-            destinations: const <Widget>[
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home_rounded),
-                label: 'Home',
+        ],
+      ),
+    );
+  }
+}
+
+/// Floating, frosted tab bar — Apple style: rounded, translucent, blurred.
+class _GlassNavBar extends StatelessWidget {
+  const _GlassNavBar({required this.index, required this.onSelect});
+
+  final int index;
+  final ValueChanged<int> onSelect;
+
+  static const List<(IconData, IconData, String)> _items = <(IconData, IconData, String)>[
+    (Icons.home_outlined, Icons.home_rounded, 'Home'),
+    (Icons.search_outlined, Icons.search_rounded, 'Search'),
+    (Icons.library_music_outlined, Icons.library_music_rounded, 'Library'),
+    (Icons.settings_outlined, Icons.settings_rounded, 'Settings'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final SaxifyAccent accent = context.accent;
+    final double bottomInset = MediaQuery.paddingOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12, 0, 12, bottomInset > 0 ? bottomInset * 0.5 + 6 : 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(SaxifyTheme.radiusLg),
+        child: BackdropFilter(
+          filter: GlassBlur.thickFilter,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF07070A).withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(SaxifyTheme.radiusLg),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  blurRadius: 30,
+                  spreadRadius: -12,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+              child: Row(
+                children: <Widget>[
+                  for (int i = 0; i < _items.length; i++)
+                    Expanded(
+                      child: _NavItem(
+                        outlined: _items[i].$1,
+                        filled: _items[i].$2,
+                        label: _items[i].$3,
+                        selected: index == i,
+                        accent: accent,
+                        onTap: () => onSelect(i),
+                      ),
+                    ),
+                ],
               ),
-              NavigationDestination(
-                icon: Icon(Icons.search_outlined),
-                selectedIcon: Icon(Icons.search_rounded),
-                label: 'Search',
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.outlined,
+    required this.filled,
+    required this.label,
+    required this.selected,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final IconData outlined;
+  final IconData filled;
+  final String label;
+  final bool selected;
+  final SaxifyAccent accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
+            color: selected ? accent.primary.withValues(alpha: 0.16) : Colors.transparent,
+            border: Border.all(
+              color: selected
+                  ? accent.primary.withValues(alpha: 0.35)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                selected ? filled : outlined,
+                size: 23,
+                color: selected ? accent.primary : SaxifyColors.textMuted,
               ),
-              NavigationDestination(
-                icon: Icon(Icons.library_music_outlined),
-                selectedIcon: Icon(Icons.library_music_rounded),
-                label: 'Library',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.download_outlined),
-                selectedIcon: Icon(Icons.download_rounded),
-                label: 'Save',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings_rounded),
-                label: 'Settings',
+              const SizedBox(height: 3),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? accent.primary : SaxifyColors.textMuted,
+                  ),
+                ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

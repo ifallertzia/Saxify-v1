@@ -87,7 +87,7 @@ class YoutubeService {
     required String author,
     Duration? duration,
   }) {
-    if (duration == null || duration.inSeconds < 25 || duration.inHours >= 1) {
+    if (duration == null || duration.inSeconds < 25) {
       return false;
     }
     final String titleText = title.toLowerCase();
@@ -99,7 +99,7 @@ class YoutubeService {
     if (notMusic.hasMatch(titleText)) return false;
 
     final RegExp musicTitle = RegExp(
-      r'\b(song|songs|music|official audio|official video|music video|lyrics?|lyrical|soundtrack|ost|theme song|bhajan|aarti|kirtan|qawwali|ghazal|sufi|mantra|meditation music|lofi|lo-fi|remix|album|track)\b|गाना|गीत|भजन|आरती|कीर्तन|कव्वाली|ग़ज़ल|संगीत|सॉन्ग',
+      r'\b(song|songs|music|official audio|official video|music video|lyrics?|lyrical|soundtrack|ost|theme song|bhajan|aarti|kirtan|qawwali|ghazal|sufi|mantra|meditation music|lofi|lo-fi|remix|album|track|jukebox|non-?stop|all songs|full album)\b|गाना|गीत|भजन|आरती|कीर्तन|कव्वाली|ग़ज़ल|संगीत|सॉन्ग',
       caseSensitive: false,
     );
     final RegExp musicChannel = RegExp(
@@ -111,9 +111,22 @@ class YoutubeService {
         RegExp(r'\bosho\b', caseSensitive: false).hasMatch('$titleText $authorText') &&
             RegExp(r'\b(meditation|dynamic|kundalini|discourse|mantra|music)\b', caseSensitive: false)
                 .hasMatch(titleText);
+
+    // Long-form uploads used to be dropped outright, which hid exactly the
+    // things Indian listeners search for: Osho meditations and discourses, hour
+    // long bhajan jukeboxes, lofi/chill mixes and study-playlists. They stay
+    // rejected unless the title or the channel says "music".
+    final bool longForm = duration.inHours >= 1;
+    final bool longFormMusic = RegExp(
+      r'\b(osho|meditation|mantra|bhajan|kirtan|aarti|satsang|discourse|pravachan|kundalini|dynamic|lofi|lo-?fi|chill|relax|sleep|study|instrumental|classical|raga|sufi|ghazal|piano|jazz|ambient|healing|devotional|jukebox|non-?stop|compilation|full album|all songs|mix|hours?|hours long)\b',
+      caseSensitive: false,
+    ).hasMatch('$titleText $authorText');
+    if (longForm && !longFormMusic && !musicTitle.hasMatch(titleText)) return false;
+
     return musicTitle.hasMatch(titleText) ||
         (plausibleSongLength && musicChannel.hasMatch(authorText)) ||
-        oshoMeditation;
+        oshoMeditation ||
+        (longForm && longFormMusic);
   }
 
   /// One representative track for a query — used to build the home rails where
