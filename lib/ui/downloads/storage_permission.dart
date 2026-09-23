@@ -41,6 +41,7 @@ class StoragePermission {
         ],
       ),
     );
+    if (!context.mounted) return false;
     if (allow != true) {
       _denied(context);
       return false;

@@ -100,7 +100,9 @@ class PlatformDetect {
 
   static bool isYoutube(String raw) => detect(raw) == MediaPlatform.youtube;
 
-  /// Public-post check only. This is not a bypass — private/login URLs are refused.
+  /// Reject malformed or obviously gated links before sending them to the
+  /// downloader. YouTube links are supported by the configured yt-dlp backend;
+  /// private/login content is never bypassed.
   static String? blockedReason(String raw) {
     final String value = raw.trim().toLowerCase();
     if (value.isEmpty) return 'Paste a public link first.';
@@ -108,11 +110,9 @@ class PlatformDetect {
     if (uri == null || !uri.hasScheme || (uri.scheme != 'http' && uri.scheme != 'https')) {
       return 'That does not look like a public http(s) link.';
     }
-    if (isYoutube(raw)) {
-      return 'YouTube video download is not supported. Stream it in Saxify, '
-          'or save audio of a song you are already playing from the song menu.';
-    }
+    if (uri.host.isEmpty) return 'That link is missing a website host.';
     if (value.contains('/login') ||
+        value.contains('/private') ||
         value.contains('paywall') ||
         value.contains('accounts.google') ||
         value.contains('signin')) {

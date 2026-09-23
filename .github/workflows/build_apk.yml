@@ -2,7 +2,7 @@ name: Build Flutter APK
 
 on:
   push:
-    branches: [ main, master, arena/01a0bf2d-testing ]
+    branches: [ main, master, arena/01a0cc83-saxify-v1 ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -42,12 +42,11 @@ jobs:
         shell: bash
         run: set -o pipefail && flutter analyze --no-fatal-infos 2>&1 | tee analyze.log
 
-      # The repo has 3 suites; CI used to skip them entirely. Non-blocking for
-      # now so a flaky test never hides a real build break again.
+      # Keep every unit/widget suite in the release gate so a failing test
+      # cannot be hidden behind a successful APK build.
       - name: Test (unit + widget)
         shell: bash
         run: set -o pipefail && flutter test 2>&1 | tee test.log
-        continue-on-error: true
 
       - name: Build APK (release)
         shell: bash
@@ -85,13 +84,19 @@ jobs:
             printf '::error::%s\n' "${line//%/\%}"
           done
 
-      # Always keep the full build log as an artifact on failure
-      - name: Upload build log (failure)
+      # Keep every analyzer/test/build log available if a blocking step fails.
+      - name: Upload build diagnostics (failure)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log
-          path: build.log
+          name: build-diagnostics
+          path: |
+            analyze.log
+            test.log
+            build.log
+            appbundle.log
+            errors.log
+          if-no-files-found: warn
 
       # Post the tail of the failed build log as a PR comment (curl, no gh)
       - name: Post build failure log to PR
@@ -113,6 +118,13 @@ jobs:
             tail -60 build.log 2>/dev/null || echo "build.log missing"
             echo '```'
             echo ''
+            echo '<details><summary>flutter analyze</summary>'
+            echo ''
+            echo '```text'
+            tail -80 analyze.log 2>/dev/null || echo "analyze.log missing"
+            echo '```'
+            echo '</details>'
+            echo ''
             echo '<details><summary>flutter test</summary>'
             echo ''
             echo '```text'
@@ -126,3 +138,44 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments" \
             -d @payload.json | head -c 400
+
+  # A release is created only after the complete build job succeeds on main.
+  # PR and feature-branch builds produce artifacts but never publish releases.
+  release:
+    name: Publish versioned APK release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download release APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release
+          path: release
+
+      - name: Read app version
+        id: version
+        shell: bash
+        run: |
+          RAW_VERSION="$(awk '/^version:/ { sub(/^version:[[:space:]]*/, ""); print; exit }' pubspec.yaml)"
+          VERSION="${RAW_VERSION%%+*}"
+          if [[ -z "$VERSION" ]]; then
+            echo "pubspec.yaml is missing a version" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Saxify v${{ steps.version.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          files: release/app-release.apk
+          fail_on_unmatched_files: true
+          make_latest: true

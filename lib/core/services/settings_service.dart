@@ -35,9 +35,9 @@ class SettingsService extends ChangeNotifier {
   static const String kMaxDownloadHistory = 'saxify.max_download_history';
 
   // ---------------------------------------------------------------- account
-  String get displayName => _prefs.getString(kDisplayName) ?? 'Siddharth';
+  String get displayName => _prefs.getString(kDisplayName)?.trim() ?? '';
   Future<void> setDisplayName(String v) =>
-      _prefs.setString(kDisplayName, v).then((_) => notifyListeners());
+      _prefs.setString(kDisplayName, v.trim()).then((_) => notifyListeners());
 
   String get email => _prefs.getString(kEmail) ?? 'dastaanenajdik@gmail.com';
   Future<void> setEmail(String v) =>

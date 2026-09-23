@@ -6,11 +6,13 @@ import '../../core/models/artist.dart';
 import '../../core/models/playlist.dart';
 import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
+import '../../core/services/music_download_service.dart';
 import '../../core/services/playback_service.dart';
 import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
-import '../artist/artist_page.dart';
+import '../artist/artist_router.dart';
+import '../settings/backup_sheet.dart';
 import '../settings/playlist_sync_sheet.dart';
 import '../widgets/artwork.dart';
 import '../widgets/neon.dart';
@@ -24,7 +26,7 @@ class LibraryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -32,18 +34,7 @@ class LibraryPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Padding(
-                padding: EdgeInsets.fromLTRB(20, 14, 20, 6),
-                child: Text(
-                  'Your Library',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.6,
-                    color: SaxifyColors.textPrimary,
-                  ),
-                ),
-              ),
+              _LibraryHeader(),
               TabBar(
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
@@ -53,6 +44,7 @@ class LibraryPage extends StatelessWidget {
                   Tab(text: 'Playlists'),
                   Tab(text: 'Songs'),
                   Tab(text: 'Artists'),
+                  Tab(text: 'Downloads'),
                   Tab(text: 'History'),
                 ],
               ),
@@ -63,6 +55,7 @@ class LibraryPage extends StatelessWidget {
                     _PlaylistsTab(),
                     _SongsTab(),
                     _ArtistsTab(),
+                    _DownloadsTab(),
                     _HistoryTab(),
                   ],
                 ),
@@ -70,6 +63,40 @@ class LibraryPage extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _LibraryHeader extends StatelessWidget {
+  const _LibraryHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 6),
+      child: Row(
+        children: <Widget>[
+          const Expanded(
+            child: Text(
+              'Your Library',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.6,
+                color: SaxifyColors.textPrimary,
+              ),
+            ),
+          ),
+          IconButton.filledTonal(
+            tooltip: 'Backup / import library JSON',
+            onPressed: () => showBackupSheet(
+              context,
+              context.read<LibraryService>(),
+            ),
+            icon: const Icon(Icons.backup_outlined),
+          ),
+        ],
       ),
     );
   }
@@ -415,50 +442,207 @@ class _SongsTab extends StatelessWidget {
 class _ArtistsTab extends StatelessWidget {
   const _ArtistsTab();
 
+  static const List<String> _indianArtists = <String>[
+    'Arijit Singh',
+    'Shreya Ghoshal',
+    'A. R. Rahman',
+    'Sonu Nigam',
+    'Lata Mangeshkar',
+    'Kishore Kumar',
+    'Asha Bhosle',
+    'Udit Narayan',
+    'Mohammed Rafi',
+    'Kumar Sanu',
+    'Jubin Nautiyal',
+    'Armaan Malik',
+    'Neha Kakkar',
+    'Sunidhi Chauhan',
+    'Vishal Mishra',
+    'Mohit Chauhan',
+    'Javed Ali',
+    'Kailash Kher',
+    'Papon',
+    'Monali Thakur',
+    'Palak Muchhal',
+    'Sukhwinder Singh',
+    'B Praak',
+    'Diljit Dosanjh',
+    'Sidhu Moose Wala',
+    'AP Dhillon',
+    'Guru Randhawa',
+    'Badshah',
+    'Yo Yo Honey Singh',
+    'Shankar Mahadevan',
+    'Vishal-Shekhar',
+    'Pritam',
+    'Amit Trivedi',
+    'Anirudh Ravichander',
+    'Sid Sriram',
+    'S. P. Balasubrahmanyam',
+    'K. S. Chithra',
+    'Ilaiyaraaja',
+    'Devi Sri Prasad',
+    'Benny Dayal',
+    'Hariharan',
+    'Jasleen Royal',
+    'Prateek Kuhad',
+    'Ritviz',
+    'Nucleya',
+  ];
+
   @override
   Widget build(BuildContext context) {
     final LibraryService library = context.watch<LibraryService>();
-    final List<ArtistRef> artists = library.artists;
+    final List<ArtistRef> followed = library.artists;
+    final Color accent = context.accent.primary;
 
-    if (artists.isEmpty) {
-      return const SingleChildScrollView(
-        child: EmptyState(
-          icon: Icons.person_outline_rounded,
-          title: 'No artists followed',
-          message:
-              'Open an artist from any song and tap follow to keep them here.',
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 140),
+      children: <Widget>[
+        const SectionHeader(
+          title: 'Indian artists',
+          subtitle: 'Hindi and regional artists · tap a name for songs',
+          padding: EdgeInsets.fromLTRB(8, 14, 8, 8),
         ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 140),
-      itemCount: artists.length,
-      itemBuilder: (BuildContext c, int i) {
-        final ArtistRef artist = artists[i];
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-          leading: ClipOval(
-            child: Artwork(url: artist.imageUrl, size: 48, radius: 24),
+        for (final String name in _indianArtists)
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+            leading: CircleAvatar(
+              backgroundColor: accent,
+              foregroundColor: Colors.black,
+              child: Text(
+                name.trim().substring(0, 1),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+            trailing: const Icon(Icons.chevron_right_rounded, color: SaxifyColors.textFaint),
+            onTap: () => openArtistByName(context, name: name),
           ),
-          title: Text(artist.name,
-              style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text(artist.subscribers ?? 'Artist',
-              style: const TextStyle(
-                  fontSize: 11.5, color: SaxifyColors.textMuted)),
-          trailing: const Icon(Icons.chevron_right_rounded,
-              color: SaxifyColors.textFaint),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (BuildContext p) => ArtistPage(
+        if (followed.isNotEmpty) ...<Widget>[
+          SectionHeader(
+            title: 'Followed artists',
+            subtitle: '${followed.length} saved on this device',
+            padding: const EdgeInsets.fromLTRB(8, 20, 8, 8),
+          ),
+          for (final ArtistRef artist in followed)
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              leading: ClipOval(
+                child: Artwork(url: artist.imageUrl, size: 48, radius: 24),
+              ),
+              title: Text(artist.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(
+                artist.subscribers ?? 'Artist',
+                style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded, color: SaxifyColors.textFaint),
+              onTap: () => openArtistByName(
+                context,
+                name: artist.name,
                 channelId: artist.channelId,
-                fallbackName: artist.name,
-                fallbackImageUrl: artist.imageUrl,
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+// --------------------------------------------------------------- Downloads
+class _DownloadsTab extends StatelessWidget {
+  const _DownloadsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final MusicDownloadService downloads = context.watch<MusicDownloadService>();
+    final PlaybackService playback = context.read<PlaybackService>();
+    final List<MusicDownloadJob> saved = downloads.downloaded;
+    final List<Song> songs = saved.map((MusicDownloadJob job) => job.song).toList();
+    final Map<String, String> sources = <String, String>{
+      for (final MusicDownloadJob job in saved)
+        if (job.offlinePath != null) job.song.id: job.offlinePath!,
+    };
+    final List<MusicDownloadJob> active = downloads.jobs
+        .where((MusicDownloadJob job) =>
+            job.phase == MusicDownloadPhase.running || job.phase == MusicDownloadPhase.idle)
+        .toList();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 140),
+      children: <Widget>[
+        const SectionHeader(
+          title: 'Your Downloads',
+          subtitle: 'Saved on this phone · available offline',
+          padding: EdgeInsets.fromLTRB(8, 12, 8, 8),
+        ),
+        for (final MusicDownloadJob job in active)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: NeonCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(job.song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: job.phase == MusicDownloadPhase.running ? job.fraction : null,
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    job.phase == MusicDownloadPhase.running
+                        ? 'Downloading · ${(job.fraction * 100).round()}%'
+                        : 'Waiting in queue',
+                    style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
+                  ),
+                ],
               ),
             ),
           ),
-        );
-      },
+        if (saved.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text('${saved.length} songs saved',
+                      style: const TextStyle(fontSize: 12.5, color: SaxifyColors.textMuted)),
+                ),
+                TextButton.icon(
+                  onPressed: () => playback.playOfflineQueue(songs, sources),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                  label: const Text('Play all'),
+                ),
+              ],
+            ),
+          ),
+        if (saved.isEmpty && active.isEmpty)
+          const EmptyState(
+            icon: Icons.download_outlined,
+            title: 'No songs downloaded yet',
+            message: 'Tap the download icon beside any song. Your files stay on this device and play offline.',
+          ),
+        for (int i = 0; i < saved.length; i++)
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            leading: Artwork(url: saved[i].song.thumbnailUrl, size: 48, radius: 8),
+            title: Text(saved[i].song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: Text(
+              '${saved[i].song.artist} · ${(saved[i].size / (1024 * 1024)).toStringAsFixed(1)} MB',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
+            ),
+            trailing: IconButton(
+              tooltip: 'Delete download',
+              onPressed: () => downloads.delete(saved[i], playback: playback),
+              icon: const Icon(Icons.delete_outline_rounded, color: SaxifyColors.danger),
+            ),
+            onTap: saved[i].offlinePath == null
+                ? null
+                : () => playback.playOfflineSong(saved[i].song, saved[i].offlinePath!),
+          ),
+      ],
     );
   }
 }

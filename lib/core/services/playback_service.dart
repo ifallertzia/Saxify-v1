@@ -73,6 +73,9 @@ class PlaybackService extends ChangeNotifier {
   /// Stream URLs resolved ahead of time for the next track (gapless).
   final Map<String, String> _prewarmed = <String, String>{};
 
+  /// Device-local file URIs registered from Your Downloads.
+  final Map<String, String> _offlineSources = <String, String>{};
+
   /// Tracks that already failed once — never retry them in the same session.
   final Set<String> _failedIds = <String>{};
 
@@ -169,16 +172,47 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> togglePlayPause() async {
-    if (_current == null) return;
+    final Song? song = _current;
+    if (song == null) return;
     if (_player.playing) {
       await _player.pause();
     } else {
-      await _player.play();
+      _startPlayerPlayback(song);
     }
   }
 
   Future<void> pause() => _player.pause();
-  Future<void> resume() => _current == null ? Future<void>.value() : _player.play();
+
+  Future<void> resume() async {
+    final Song? song = _current;
+    if (song != null) _startPlayerPlayback(song);
+  }
+
+  /// Play saved music without resolving a network URL. A local source is
+  /// preferred for that song until its download is removed.
+  Future<void> playOfflineSong(Song song, String pathOrUri) =>
+      playOfflineQueue(<Song>[song], <String, String>{song.id: pathOrUri});
+
+  Future<void> playOfflineQueue(
+    List<Song> songs,
+    Map<String, String> sources, {
+    int startIndex = 0,
+  }) async {
+    for (final MapEntry<String, String> entry in sources.entries) {
+      _offlineSources[entry.key] = _asLocalUri(entry.value);
+    }
+    await playQueue(songs, startIndex: startIndex);
+  }
+
+  void forgetOfflineSong(String songId) {
+    _offlineSources.remove(songId);
+  }
+
+  String _asLocalUri(String pathOrUri) {
+    final Uri? parsed = Uri.tryParse(pathOrUri);
+    if (parsed != null && parsed.hasScheme) return parsed.toString();
+    return Uri.file(pathOrUri).toString();
+  }
 
   Future<void> seekTo(Duration position) => _player.seek(position);
 
@@ -206,14 +240,11 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> cycleLoopMode() async {
-    switch (_loopMode) {
-      case LoopMode.off:
-        _loopMode = LoopMode.all;
-      case LoopMode.all:
-        _loopMode = LoopMode.one;
-      case LoopMode.one:
-        _loopMode = LoopMode.off;
-    }
+    _loopMode = switch (_loopMode) {
+      LoopMode.off => LoopMode.all,
+      LoopMode.all => LoopMode.one,
+      LoopMode.one => LoopMode.off,
+    };
     await _player.setLoopMode(_loopMode);
     notifyListeners();
   }
@@ -397,8 +428,9 @@ class PlaybackService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final String? local = _offlineSources[song.id];
       final String? cached = _prewarmed.remove(song.id);
-      final String url = cached ?? await resolvePlayableStreamUrl(VideoId(song.id));
+      final String url = local ?? cached ?? await resolvePlayableStreamUrl(VideoId(song.id));
 
       // Same URI load setUrl used. The tag is only notification metadata.
       final Uri? art = Uri.tryParse(song.thumbnailUrl);
@@ -422,7 +454,10 @@ class PlaybackService extends ChangeNotifier {
         await _player.seek(resume);
       }
 
-      await _player.play();
+      // AudioPlayer.play() completes only when the track ends or is paused.
+      // Awaiting it kept the mini-player spinner running for the whole song and
+      // left callers appearing stuck. Start it without blocking this method.
+      _startPlayerPlayback(song);
 
       _isLoading = false;
       _consecutiveFailures = 0;
@@ -451,6 +486,23 @@ class PlaybackService extends ChangeNotifier {
       _failedIds.add(song.id);
       notifyListeners();
       await _recover(song);
+    }
+  }
+
+  void _startPlayerPlayback(Song song) {
+    try {
+      unawaited(_player.play().catchError((Object error, StackTrace stackTrace) {
+        if (_current?.id != song.id || _isLoading) return;
+        debugPrint('Playback stream interrupted: $error\n$stackTrace');
+        _isLoading = true;
+        _consecutiveFailures++;
+        _failedIds.add(song.id);
+        _notice = 'Playback was interrupted — trying the next playable song.';
+        notifyListeners();
+        unawaited(_recover(song));
+      }));
+    } catch (e, stackTrace) {
+      debugPrint('Could not start playback: $e\n$stackTrace');
     }
   }
 
@@ -617,7 +669,7 @@ class PlaybackService extends ChangeNotifier {
     final int nextIndex = _index + 1;
     if (nextIndex < 0 || nextIndex >= _queue.length) return;
     final Song song = _queue[nextIndex];
-    if (_prewarmed.containsKey(song.id)) return;
+    if (_prewarmed.containsKey(song.id) || _offlineSources.containsKey(song.id)) return;
 
     () async {
       try {

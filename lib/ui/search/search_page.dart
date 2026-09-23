@@ -20,7 +20,7 @@ import '../widgets/media_cards.dart';
 import '../widgets/neon.dart';
 import '../widgets/song_tile.dart';
 
-enum _SearchKind { songs, artists, albums, playlists, podcasts, videos }
+enum _SearchKind { songs, artists, albums, playlists }
 
 /// Search still calls the existing YouTube search. The layout around it is new.
 class SearchPage extends StatefulWidget {
@@ -41,6 +41,7 @@ class _SearchPageState extends State<SearchPage> {
   String? _error;
   String _activeQuery = '';
   int _lastNonce = -1;
+  int _searchGeneration = 0;
   _SearchKind _kind = _SearchKind.songs;
 
   @override
@@ -57,16 +58,28 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final ShellController shell = context.read<ShellController>();
-    if (shell.queryNonce != _lastNonce && shell.pendingQuery != null) {
-      _lastNonce = shell.queryNonce;
-      final String q = shell.pendingQuery!;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _controller.text = q;
-        _runSearch(q);
-      });
-    }
+    // Listen to the shell, not just read it: mood buttons and Show all update
+    // an IndexedStack child without changing its route or remounting it.
+    final ShellController shell = Provider.of<ShellController>(context);
+    if (shell.queryNonce == _lastNonce) return;
+    _lastNonce = shell.queryNonce;
+    final String? query = shell.pendingQuery;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (query == null || query.trim().isEmpty) {
+        _searchGeneration++;
+        _controller.clear();
+        setState(() {
+          _results = <Song>[];
+          _activeQuery = '';
+          _error = null;
+          _loading = false;
+        });
+        return;
+      }
+      _controller.text = query;
+      _runSearch(query);
+    });
   }
 
   String _queryFor(String raw) {
@@ -74,15 +87,11 @@ class _SearchPageState extends State<SearchPage> {
       case _SearchKind.songs:
         return raw;
       case _SearchKind.artists:
-        return '$raw artist';
+        return '$raw Hindi singer songs';
       case _SearchKind.albums:
-        return '$raw full album';
+        return '$raw Hindi album songs';
       case _SearchKind.playlists:
-        return '$raw playlist';
-      case _SearchKind.podcasts:
-        return '$raw podcast';
-      case _SearchKind.videos:
-        return '$raw official video';
+        return '$raw Hindi songs playlist';
     }
   }
 
@@ -91,6 +100,7 @@ class _SearchPageState extends State<SearchPage> {
     final String q = query.trim();
     if (q.isEmpty) return;
 
+    final int generation = ++_searchGeneration;
     setState(() {
       _loading = true;
       _error = null;
@@ -104,14 +114,15 @@ class _SearchPageState extends State<SearchPage> {
       final RecommendationService reco = context.read<RecommendationService>();
       reco.noteSearch(q);
       final List<Song> results = await youtube.searchSongs(_queryFor(q), limit: 24);
+      if (!mounted || generation != _searchGeneration) return;
       await library.rememberSearch(q);
-      if (!mounted) return;
+      if (!mounted || generation != _searchGeneration) return;
       setState(() {
         _results = results;
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _searchGeneration) return;
       setState(() {
         _loading = false;
         _error = 'Search failed: $e';
@@ -286,10 +297,6 @@ class _SearchPageState extends State<SearchPage> {
         return 'Albums';
       case _SearchKind.playlists:
         return 'Playlists';
-      case _SearchKind.podcasts:
-        return 'Podcasts';
-      case _SearchKind.videos:
-        return 'Videos';
     }
   }
 }
@@ -353,43 +360,34 @@ class _RecentSearches extends StatelessWidget {
 class _ExploreMusic extends StatelessWidget {
   const _ExploreMusic();
 
+  static const List<(String, String)> _featured = <(String, String)>[
+    ('Trending India', 'Hindi trending songs India 2026'),
+    ('Top Bollywood', 'top Hindi Bollywood songs India'),
+    ('New Hindi', 'latest Hindi songs 2026'),
+    ('Punjabi Hits', 'Punjabi trending songs India'),
+    ('Devotional', 'Hindi bhajan devotional songs'),
+    ('Osho', 'Osho meditation music discourse'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final ShellController shell = context.read<ShellController>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const SectionHeader(title: 'Explore Music', subtitle: 'Always here, even before you search'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              ActionChip(label: const Text('Trending Now'), onPressed: () => shell.goSearch('top hits')),
-              ActionChip(label: const Text('New Releases'), onPressed: () => shell.goSearch('new songs 2026')),
-              ActionChip(label: const Text('Top Charts India'), onPressed: () => shell.goSearch('top songs india')),
-              ActionChip(label: const Text('Top Charts Global'), onPressed: () => shell.goSearch('global top 50')),
-              ActionChip(
-                label: const Text('Music Brands'),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const BrandsPage()),
-                ),
-              ),
-            ],
-          ),
+        const SectionHeader(
+          title: 'Explore Music',
+          subtitle: 'India-first stations, ready before you search',
+        ),
+        const SectionHeader(title: 'Charts & Discoveries', padding: EdgeInsets.fromLTRB(20, 12, 20, 10)),
+        MoodGenreGrid(
+          items: _featured,
+          onSelected: (String query) => shell.goSearch(query),
         ),
         const SectionHeader(title: 'Moods & Genres'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              for (final (String, String) mood in HomeCatalog.moodGenres)
-                MoodChip(label: mood.$1, onTap: () => shell.goSearch(mood.$2)),
-            ],
-          ),
+        MoodGenreGrid(
+          items: HomeCatalog.moodGenres,
+          onSelected: (String query) => shell.goSearch(query),
         ),
         const SectionHeader(title: 'New releases'),
         HorizontalRail(
@@ -409,10 +407,10 @@ class _ExploreMusic extends StatelessWidget {
         ),
         const SectionHeader(title: 'Music brands'),
         SizedBox(
-          height: 92,
+          height: 50,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: MusicBrands.all.length,
             separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (BuildContext context, int i) {

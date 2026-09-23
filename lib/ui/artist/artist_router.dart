@@ -6,7 +6,6 @@ import '../../core/services/youtube_service.dart';
 import '../../core/utils/text_match.dart';
 import '../../data/labels.dart';
 import '../brands/brands_page.dart';
-import '../shell/shell_controller.dart';
 import 'artist_page.dart';
 import 'artist_profile_page.dart';
 
@@ -25,7 +24,6 @@ Future<void> openArtistByName(
   final NavigatorState navigator = Navigator.of(context);
   final ArtistService artists = context.read<ArtistService>();
   final YoutubeService youtube = context.read<YoutubeService>();
-  final ShellController shell = context.read<ShellController>();
 
   final ArtistProfile profile = await artists.resolve(artist);
   if (!context.mounted) return;
@@ -65,6 +63,12 @@ Future<void> openArtistByName(
     } catch (_) {}
   }
 
-  shell.goSearch('$artist songs');
-  navigator.popUntil((Route<dynamic> route) => route.isFirst);
+  // Even when Deezer/YouTube metadata cannot confidently identify a channel,
+  // open an artist results page instead of dropping the user on an empty search
+  // tab. The page uses Hindi-first song-only results as its fallback.
+  navigator.push(
+    MaterialPageRoute<void>(
+      builder: (_) => ArtistProfilePage(queryName: artist, profile: profile),
+    ),
+  );
 }

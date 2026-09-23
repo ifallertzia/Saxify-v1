@@ -24,145 +24,139 @@ class HomeCatalog extends ChangeNotifier {
   bool refreshing = false;
   String? error;
   bool _loaded = false;
+  Future<void>? _loadOperation;
 
   List<Song> madeForYou = <Song>[];
   List<Song> trending = <Song>[];
   List<Song> recommended = <Song>[];
 
-  /// Shelf data straight off saxify.vercel.app.
+  /// Release shelves are deliberately India-first; every card opens a song-only search.
   static const List<AlbumCard> newReleases = <AlbumCard>[
     AlbumCard(
-      query: 'new songs 2026 official',
-      title: 'New Music 2026',
-      artist: 'Fally Ipupa',
-      coverVideoId: '3Xl2N5OQKME',
-    ),
-    AlbumCard(
-      query: 'latest bollywood songs 2026',
+      query: 'latest Hindi Bollywood songs 2026 official audio',
       title: 'Bollywood Fresh',
-      artist: 'Pritam',
+      artist: 'Hindi · 2026',
       coverVideoId: 'NwgOjWWTwyM',
     ),
     AlbumCard(
-      query: 'new pop releases 2026',
-      title: 'Pop Radar',
-      artist: 'Lumivox',
+      query: 'new Hindi indie songs 2026',
+      title: 'Hindi Indie',
+      artist: 'India · Indie',
       coverVideoId: '8lGpmDxT98o',
     ),
     AlbumCard(
-      query: 'latest punjabi songs 2026',
+      query: 'latest Punjabi songs 2026 official audio',
       title: 'Punjabi Heat',
-      artist: 'Harf Cheema',
+      artist: 'Punjabi · 2026',
       coverVideoId: 'p9EAwHf6XjI',
     ),
     AlbumCard(
-      query: 'new hip hop 2026',
-      title: 'Hip-Hop Now',
-      artist: 'DaBaby',
-      coverVideoId: 'ThdQv0PFUsc',
+      query: 'Hindi devotional bhajan 2026',
+      title: 'Bhakti & Devotion',
+      artist: 'Hindi · Bhajan',
+      coverVideoId: '3Xl2N5OQKME',
     ),
     AlbumCard(
-      query: 'trending lo-fi 2026',
-      title: 'Lo-Fi Corner',
-      artist: 'Unknown Artist',
+      query: 'Hindi lofi chill songs',
+      title: 'Hindi Lo-Fi',
+      artist: 'Chill · India',
       coverVideoId: '0zdlvwZ8yuw',
+    ),
+    AlbumCard(
+      query: 'Tamil Telugu latest songs 2026',
+      title: 'South Indian Hits',
+      artist: 'Tamil · Telugu',
+      coverVideoId: 'ThdQv0PFUsc',
     ),
   ];
 
   static const List<ArtistRef> topArtists = <ArtistRef>[
-    ArtistRef(
-        channelId: 'UCU1JusGzZe0Msn79JB3g46w',
-        name: 'B.o.B',
-        imageUrl: 'https://i.ytimg.com/vi/YVev0EXDSm0/hqdefault.jpg'),
-    ArtistRef(
-        channelId: 'UClYV6hHlupm_S_ObS1W-DYw',
-        name: 'The Weeknd',
-        imageUrl: 'https://i.ytimg.com/vi/J7p4bzqLvCw/hqdefault.jpg'),
-    ArtistRef(
-        channelId: 'UCo6JijJGA3IvIiPsawDK3Ww',
-        name: 'Shakira',
-        imageUrl: 'https://i.ytimg.com/vi/lFQdcPTTzSg/hqdefault.jpg'),
-    ArtistRef(
-        channelId: 'UC48KcV8QzaB761VFbrFZ4YQ',
-        name: 'Ricky Rich',
-        imageUrl: 'https://i.ytimg.com/vi/9XsXJpYc7pU/hqdefault.jpg'),
-    ArtistRef(
-        channelId: 'UCOx12K3GqOMcIeyNTNj1Z6Q',
-        name: 'Ruth B.',
-        imageUrl: 'https://i.ytimg.com/vi/HZbsLxL7GeM/hqdefault.jpg'),
-    ArtistRef(
-        channelId: 'UCyLlLf_1tSPom7l71lub4BA',
-        name: 'Bappi Lahiri',
-        imageUrl: 'https://i.ytimg.com/vi/68RLvhxk_4g/hqdefault.jpg'),
-    ArtistRef(
-        channelId: 'UCYCocSsv6lg9UM8IvY5hMEA',
-        name: 'Otilia',
-        imageUrl: 'https://i.ytimg.com/vi/cAQtS4vIRQs/hqdefault.jpg'),
-    ArtistRef(
-        channelId: 'UCgpBsaDW2n_6ruzht3wvP0A',
-        name: 'Sam Smith',
-        imageUrl: 'https://i.ytimg.com/vi/8VKD-IlvibI/hqdefault.jpg'),
-    ArtistRef(
-        channelId: 'UClmXPfaYhXOYsNn_QUyheWQ',
-        name: 'Ed Sheeran',
-        imageUrl: 'https://i.ytimg.com/vi/xTvyyoF_LZY/hqdefault.jpg'),
-    ArtistRef(
-        channelId: 'UCCK1-D6wWlRuQgaCdIAKsMA',
-        name: 'Jaymes Young',
-        imageUrl: 'https://i.ytimg.com/vi/WMK3JXG3Fx0/hqdefault.jpg'),
+    ArtistRef(channelId: '', name: 'Arijit Singh', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'Shreya Ghoshal', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'A. R. Rahman', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'Sonu Nigam', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'Lata Mangeshkar', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'Jubin Nautiyal', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'Diljit Dosanjh', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'Anirudh Ravichander', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'Neha Kakkar', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'Kishore Kumar', imageUrl: ''),
   ];
 
-  /// The 8 mood chips from the site — label plus the query they run.
+  /// India-first mood and genre shelves. Every label is a tappable song station.
   static const List<(String, String)> moodGenres = <(String, String)>[
-    ('Pop', 'pop hits'),
-    ('Lo-Fi', 'lofi beats'),
-    ('Workout', 'workout edm'),
-    ('Chill', 'chill vibes'),
-    ('Classical', 'classical piano'),
-    ('Party', 'party dance'),
-    ('Focus', 'deep focus instrumental'),
-    ('Romance', 'romantic songs'),
+    ('Bollywood', 'Hindi Bollywood hit songs'),
+    ('Hindi Pop', 'Hindi pop songs India'),
+    ('Hindi Indie', 'Hindi indie songs India'),
+    ('Punjabi', 'Punjabi hit songs India'),
+    ('Devotional', 'Hindi bhajan devotional songs'),
+    ('Workout', 'Hindi workout gym songs'),
+    ('Chill', 'Hindi chill songs relaxing'),
+    ('Lo-Fi', 'Hindi lofi songs chill beats'),
+    ('Romance', 'Hindi romantic love songs'),
+    ('Sufi', 'Hindi Sufi songs India'),
+    ('Qawwali', 'Indian qawwali songs'),
+    ('Ghazal', 'Hindi ghazal songs'),
+    ('Retro', 'Hindi old retro songs'),
+    ('Classical', 'Indian classical instrumental music'),
+    ('Party', 'Hindi party dance songs'),
+    ('Focus', 'Indian instrumental focus music'),
+    ('Road Trip', 'Hindi road trip songs'),
+    ('Marathi', 'Marathi hit songs'),
+    ('Bengali', 'Bengali songs India'),
+    ('Tamil', 'Tamil hit songs'),
+    ('Telugu', 'Telugu hit songs'),
+    ('Osho', 'Osho meditation music discourse'),
   ];
 
   static const List<String> _trendingQueries = <String>[
-    'blinding lights the weeknd',
-    'shape of you ed sheeran',
-    'dandelions ruth b',
-    'unholy sam smith',
-    'waka waka shakira',
-    'nothin on you b.o.b bruno mars',
-    'infinity jaymes young',
-    'bilionera otilia',
-    'habibi ricky rich',
-    'perfect ed sheeran',
+    'Hindi trending songs India 2026',
+    'latest Bollywood Hindi songs official audio',
+    'Punjabi trending songs India 2026',
+    'Hindi romantic hit songs',
+    'Hindi devotional bhajan trending',
+    'Hindi indie pop songs India',
+    'Tamil Telugu trending songs India',
+    'Hindi retro evergreen songs',
+    'Hindi workout songs playlist',
+    'Indian lofi chill songs',
   ];
 
   static const List<String> _madeForYouFallback = <String>[
-    'r&b playlist 2026 mix',
-    'buddha lounge bar chillout',
-    'deep house lounge mix',
-    'mega hits 2026 playlist',
-    'smooth relaxing jazz songs',
-    'summer love songs chill pop',
+    'Hindi romantic songs playlist',
+    'Hindi lofi chill songs',
+    'Bollywood soft songs',
+    'Hindi pop hits India',
+    'Hindi devotional bhajan songs',
+    'Punjabi love songs',
   ];
 
   static const List<String> _recommendedFallback = <String>[
-    'chill beach vibes playlist',
-    'amapiano mixtape',
-    'afro soul romantic love songs',
-    'tems free mind',
-    'sza snooze',
-    'kolohe kai cool down',
-    'deep house sunset beach mix',
-    'freed from desire chill',
+    'Hindi indie songs India',
+    'latest Bollywood songs Hindi',
+    'Hindi retro hit songs',
+    'Indian classical instrumental',
+    'Hindi sufi songs',
+    'Hindi workout songs',
+    'Osho meditation music',
+    'Punjabi party songs',
   ];
 
-  /// Loads every rail. Safe to call repeatedly — the first call fills the
-  /// shelves, later calls only refetch when [force] is set (pull-to-refresh).
-  Future<void> load({bool force = false}) async {
-    if (_loaded && !force) return;
-    if (loading && !force) return;
+  /// Loads each shelf automatically on first use. Concurrent callers (for
+  /// example the Home screen and Today's Mix button) share one request.
+  Future<void> load({bool force = false}) {
+    if (_loaded && !force) return Future<void>.value();
+    final Future<void>? inFlight = _loadOperation;
+    if (inFlight != null) return inFlight;
 
+    final Future<void> operation = Future<void>.microtask(_performLoad);
+    _loadOperation = operation;
+    return operation.whenComplete(() {
+      if (identical(_loadOperation, operation)) _loadOperation = null;
+    });
+  }
+
+  Future<void> _performLoad() async {
     if (_loaded) {
       refreshing = true;
     } else {
@@ -183,6 +177,9 @@ class HomeCatalog extends ChangeNotifier {
         _rail(queries[1], 10),
         _rail(queries[2], 8),
       ]);
+      if (rails.every((List<Song> shelf) => shelf.isEmpty)) {
+        throw StateError('The music service returned no catalog results');
+      }
 
       madeForYou = rails[0];
       trending = rails[1];
@@ -199,13 +196,19 @@ class HomeCatalog extends ChangeNotifier {
     }
   }
 
-  /// One song per query, fetched in parallel — that is how the site's rails are
-  /// built too (each card is a curated search).
+  /// Fetches a few stations at a time to avoid firing twenty YouTube requests
+  /// simultaneously on slower phones or mobile connections.
   Future<List<Song>> _rail(List<String> queries, int limit) async {
-    final List<Song?> results = await Future.wait(<Future<Song?>>[
-      for (final String q in queries.take(limit)) _youtube.topSong(q),
-    ]);
-    return results.whereType<Song>().toList();
+    final List<Song> songs = <Song>[];
+    final List<String> selected = queries.take(limit).toList();
+    for (int start = 0; start < selected.length; start += 4) {
+      final List<String> batch = selected.skip(start).take(4).toList();
+      final List<Song?> results = await Future.wait(<Future<Song?>>[
+        for (final String query in batch) _youtube.topSong(query),
+      ]);
+      songs.addAll(results.whereType<Song>());
+    }
+    return songs;
   }
 
   /// "Made for you": artists you actually played, then curated fallbacks.

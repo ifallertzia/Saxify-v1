@@ -66,8 +66,9 @@ void main() {
   });
 
   group('downloader policy', () {
-    test('youtube and login links are refused', () {
-      expect(PlatformDetect.blockedReason('https://youtu.be/abc'), isNotNull);
+    test('public YouTube links pass while login-gated links are refused', () {
+      expect(PlatformDetect.blockedReason('https://youtu.be/abc'), isNull);
+      expect(PlatformDetect.blockedReason('https://www.youtube.com/watch?v=abc'), isNull);
       expect(PlatformDetect.blockedReason('https://example.com/login'), isNotNull);
       expect(PlatformDetect.blockedReason('https://www.instagram.com/p/abc'), isNull);
     });

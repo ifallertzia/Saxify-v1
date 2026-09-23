@@ -9,6 +9,7 @@ import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
 import 'artwork.dart';
+import 'song_download_button.dart';
 import 'song_menu.dart';
 
 /// One row in any track list. Matches the site's result rows: square artwork,
@@ -131,9 +132,12 @@ class SongTile extends StatelessWidget {
                   ],
                 ),
               ),
+              SongDownloadButton(song: song, size: dense ? 36 : 38),
               IconButton(
                 tooltip: liked ? 'Remove from Liked Songs' : 'Like',
                 visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(width: 38, height: 38),
                 icon: Icon(
                   liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                   size: 19,
@@ -145,6 +149,8 @@ class SongTile extends StatelessWidget {
                 IconButton(
                   tooltip: 'More',
                   visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(width: 38, height: 38),
                   icon: const Icon(Icons.more_horiz_rounded,
                       size: 20, color: SaxifyColors.textFaint),
                   onPressed: () => showSongSheet(context, song),

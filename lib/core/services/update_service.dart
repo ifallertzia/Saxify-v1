@@ -12,13 +12,10 @@ import 'package:path_provider/path_provider.dart';
 /// version compare against GitHub Releases, in-app APK download with progress,
 /// and hand-off to the system installer.
 class UpdateService {
-  /// Where releases are published. The primary repo is the one named in the
-  /// brief; if it has no releases we fall back to the repo that CI actually
-  /// publishes from, so the feature works either way.
+  /// This is the repository that publishes the canonical versioned APK release
+  /// consumed by the in-app updater.
   static const List<String> releaseRepos = <String>[
-    'dastaanenajdik/Saxify-v1',
-    'dastaanenajdik/saxify-app',
-    'dastaanenajdik/testing',
+    'ifallertzia/Saxify-v1',
   ];
 
   static const String _apkAssetName = 'app-release.apk';

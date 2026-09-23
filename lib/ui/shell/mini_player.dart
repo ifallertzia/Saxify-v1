@@ -40,12 +40,12 @@ class MiniPlayer extends StatelessWidget {
               borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
               gradient: LinearGradient(
                 colors: <Color>[
-                  accent.primary.withValues(alpha: 0.18),
+                  accent.primary.withValues(alpha: 0.34),
                   SaxifyColors.card,
                   SaxifyColors.card,
                 ],
               ),
-              border: Border.all(color: accent.primary.withValues(alpha: 0.28)),
+              border: Border.all(color: accent.primary.withValues(alpha: 0.48)),
               boxShadow: <BoxShadow>[
                 BoxShadow(
                   color: accent.primary.withValues(alpha: 0.18),

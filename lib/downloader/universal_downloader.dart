@@ -49,6 +49,8 @@ class UniversalDownloader extends ChangeNotifier {
   String speedLabel = '';
   CancelToken? _token;
   bool stopBulk = false;
+  bool bulkRunning = false;
+  BulkRow? _activeBulkRow;
 
   final List<BulkRow> bulk = <BulkRow>[];
 
@@ -118,7 +120,11 @@ class UniversalDownloader extends ChangeNotifier {
       notifyListeners();
       return null;
     }
-    final String type = kind == DownloadKind.audio ? 'audio' : 'video';
+    final String type = switch (kind) {
+      DownloadKind.audio => 'audio',
+      DownloadKind.videoOnly => 'video_only',
+      DownloadKind.video => 'video',
+    };
     final String ext = kind == DownloadKind.audio ? 'mp3' : 'mp4';
     final String title = info?.title ?? 'download';
     final String name = Filenames.saxify(title, ext);
@@ -131,14 +137,16 @@ class UniversalDownloader extends ChangeNotifier {
     speedLabel = '';
     notifyListeners();
 
-    final Directory cache = await getTemporaryDirectory();
-    final File temp = File('${cache.path}/$name.part');
-    if (temp.existsSync()) await temp.delete();
+    File? temp;
     _token = CancelToken();
     int lastBytes = 0;
     DateTime lastTick = DateTime.now();
 
     try {
+      final Directory cache = await getTemporaryDirectory();
+      final File tempFile = File('${cache.path}/$name.part');
+      temp = tempFile;
+      if (tempFile.existsSync()) await tempFile.delete();
       final Uri uri = api.downloadUri(
         url: activeUrl,
         type: type,
@@ -146,7 +154,7 @@ class UniversalDownloader extends ChangeNotifier {
       );
       await _dio.download(
         uri.toString(),
-        temp.path,
+        tempFile.path,
         cancelToken: _token,
         options: Options(
           headers: BackendConfig.downloadHeaders(),
@@ -157,6 +165,7 @@ class UniversalDownloader extends ChangeNotifier {
           received = got;
           total = all > 0 ? all : null;
           fraction = all <= 0 ? 0 : (got / all).clamp(0.0, 1.0);
+          if (_activeBulkRow != null) _activeBulkRow!.fraction = fraction;
           final DateTime now = DateTime.now();
           final int ms = now.difference(lastTick).inMilliseconds;
           if (ms > 400) {
@@ -169,8 +178,8 @@ class UniversalDownloader extends ChangeNotifier {
         },
       );
 
-      final int size = await temp.length();
-      final RandomAccessFile raf = await temp.open();
+      final int size = await tempFile.length();
+      final RandomAccessFile raf = await tempFile.open();
       final List<int> head = await raf.read(48);
       await raf.close();
       if (Filenames.looksCorrupt(head, size)) {
@@ -178,13 +187,18 @@ class UniversalDownloader extends ChangeNotifier {
       }
       final File finalFile = File('${cache.path}/$name');
       if (finalFile.existsSync()) await finalFile.delete();
-      await temp.rename(finalFile.path);
+      await tempFile.rename(finalFile.path);
 
-      final SavedFile? saved = await NativeBridge.saveToDownloads(
-        sourcePath: finalFile.path,
-        displayName: name,
-        mime: kind == DownloadKind.audio ? 'audio/mpeg' : 'video/mp4',
-      );
+      SavedFile? saved;
+      try {
+        saved = await NativeBridge.saveToDownloads(
+          sourcePath: finalFile.path,
+          displayName: name,
+          mime: kind == DownloadKind.audio ? 'audio/mpeg' : 'video/mp4',
+        );
+      } catch (e) {
+        debugPrint('[Saxify][UniversalDownloader] public save failed: $e');
+      }
       final DownloadRecord record = DownloadRecord(
         id: 'dl_${DateTime.now().microsecondsSinceEpoch}',
         url: activeUrl,
@@ -206,11 +220,13 @@ class UniversalDownloader extends ChangeNotifier {
       notifyListeners();
       return record;
     } on DioException catch (e) {
+      _deleteTemp(temp);
       jobStatus = CancelToken.isCancel(e) ? JobStatus.cancelled : JobStatus.failed;
       jobError = CancelToken.isCancel(e)
           ? 'Cancelled'
           : classifyDownloadError(e, status: e.response?.statusCode, body: '${e.response?.data}');
     } catch (e) {
+      _deleteTemp(temp);
       jobStatus = JobStatus.failed;
       jobError = classifyDownloadError(e);
     } finally {
@@ -221,6 +237,14 @@ class UniversalDownloader extends ChangeNotifier {
   }
 
   void cancel() => _token?.cancel('user');
+
+  void _deleteTemp(File? file) {
+    try {
+      if (file?.existsSync() == true) file!.deleteSync();
+    } catch (e) {
+      debugPrint('[Saxify][UniversalDownloader] temp cleanup failed: $e');
+    }
+  }
 
   void loadBulk(String raw) {
     bulk
@@ -246,54 +270,75 @@ class UniversalDownloader extends ChangeNotifier {
 
   Future<Map<String, int>> runBulk({
     required DownloaderMode mode,
+    DownloadKind? kind,
   }) async {
+    if (bulkRunning) return <String, int>{'done': 0, 'failed': 0, 'skipped': 0};
     stopBulk = false;
+    bulkRunning = true;
     int done = 0;
     int failed = 0;
     int skipped = 0;
-    for (final BulkRow row in bulk) {
-      if (stopBulk) {
-        row.status = JobStatus.cancelled;
-        skipped++;
-        continue;
-      }
-      final String? blocked = PlatformDetect.blockedReason(row.url);
-      if (blocked != null) {
-        row.status = JobStatus.skipped;
-        row.message = blocked;
-        skipped++;
+    notifyListeners();
+    try {
+      for (final BulkRow row in List<BulkRow>.of(bulk)) {
+        if (stopBulk) {
+          row.status = JobStatus.cancelled;
+          skipped++;
+          notifyListeners();
+          continue;
+        }
+        final String? blocked = PlatformDetect.blockedReason(row.url);
+        if (blocked != null) {
+          row.status = JobStatus.skipped;
+          row.message = blocked;
+          skipped++;
+          notifyListeners();
+          continue;
+        }
+        row.status = JobStatus.fetching;
+        row.fraction = 0;
         notifyListeners();
-        continue;
-      }
-      row.status = JobStatus.fetching;
-      notifyListeners();
-      setUrl(row.url);
-      final MediaInfo? meta = await fetch();
-      if (meta == null) {
-        row.status = JobStatus.failed;
-        row.message = infoError;
-        failed++;
+        setUrl(row.url);
+        final MediaInfo? meta = await fetch();
+        if (stopBulk) {
+          row.status = JobStatus.cancelled;
+          skipped++;
+          notifyListeners();
+          continue;
+        }
+        if (meta == null) {
+          row.status = JobStatus.failed;
+          row.message = infoError;
+          failed++;
+          notifyListeners();
+          continue;
+        }
+        row.title = meta.title;
+        final DownloadKind downloadKind = kind ??
+            (mode == DownloaderMode.audioMp3 ? DownloadKind.audio : DownloadKind.video);
+        row.status = JobStatus.downloading;
+        row.fraction = 0;
+        _activeBulkRow = row;
         notifyListeners();
-        continue;
+        final DownloadRecord? record = await download(kind: downloadKind, best: true);
+        _activeBulkRow = null;
+        if (record != null) {
+          row.status = JobStatus.done;
+          row.fraction = 1;
+          done++;
+        } else if (jobStatus == JobStatus.cancelled) {
+          row.status = JobStatus.cancelled;
+          skipped++;
+        } else {
+          row.status = JobStatus.failed;
+          row.message = jobError;
+          failed++;
+        }
+        notifyListeners();
       }
-      row.title = meta.title;
-      final DownloadKind kind =
-          mode == DownloaderMode.audioMp3 ? DownloadKind.audio : DownloadKind.video;
-      row.status = JobStatus.downloading;
-      notifyListeners();
-      final DownloadRecord? record = await download(kind: kind, best: true);
-      if (record != null) {
-        row.status = JobStatus.done;
-        row.fraction = 1;
-        done++;
-      } else if (jobStatus == JobStatus.cancelled) {
-        row.status = JobStatus.cancelled;
-        skipped++;
-      } else {
-        row.status = JobStatus.failed;
-        row.message = jobError;
-        failed++;
-      }
+    } finally {
+      _activeBulkRow = null;
+      bulkRunning = false;
       notifyListeners();
     }
     return <String, int>{'done': done, 'failed': failed, 'skipped': skipped};

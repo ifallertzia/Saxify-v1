@@ -1,6 +1,6 @@
 import 'platform_detect.dart';
 
-enum DownloadKind { video, audio }
+enum DownloadKind { video, audio, videoOnly }
 
 enum DownloaderMode { bestVideo, audioMp3, ask }
 
@@ -35,9 +35,20 @@ class MediaFormat {
     }
     final String id = (json['format_id'] ?? json['id'] ?? json['format'] ?? '').toString();
     final String ext = (json['ext'] ?? json['container'] ?? '').toString();
-    final bool video = json['vcodec']?.toString() != 'none' && json['vcodec'] != null
-        ? json['vcodec'].toString() != 'none'
-        : (json['type']?.toString() != 'audio');
+    final String type = (json['type'] ?? json['kind'] ?? '').toString().toLowerCase();
+    final Object? rawVideoCodec = json['vcodec'];
+    final Object? rawAudioCodec = json['acodec'];
+    final bool hasVideo = json['hasVideo'] is bool
+        ? json['hasVideo'] as bool
+        : rawVideoCodec != null
+            ? rawVideoCodec.toString() != 'none'
+            : type != 'audio' && type != 'audio_only' &&
+                !<String>{'mp3', 'm4a', 'aac', 'opus', 'vorbis'}.contains(ext.toLowerCase());
+    final bool hasAudio = json['hasAudio'] is bool
+        ? json['hasAudio'] as bool
+        : rawAudioCodec != null
+            ? rawAudioCodec.toString() != 'none'
+            : type != 'video_only';
     final String label = (json['format_note'] ??
             json['quality'] ??
             json['resolution'] ??
@@ -54,8 +65,8 @@ class MediaFormat {
           : json['size'] is int
               ? json['size'] as int
               : int.tryParse('${json['filesize'] ?? ''}'),
-      hasVideo: video,
-      hasAudio: json['acodec']?.toString() != 'none',
+      hasVideo: hasVideo,
+      hasAudio: hasAudio,
     );
   }
 }
@@ -173,7 +184,11 @@ class DownloadRecord {
         (MediaPlatform p) => p.name == json['platform'],
         orElse: () => MediaPlatform.other,
       ),
-      kind: json['kind'] == 'audio' ? DownloadKind.audio : DownloadKind.video,
+      kind: switch (json['kind']) {
+        'audio' => DownloadKind.audio,
+        'videoOnly' => DownloadKind.videoOnly,
+        _ => DownloadKind.video,
+      },
       quality: json['quality'] as String? ?? '',
       createdAt: DateTime.tryParse(json['at'] as String? ?? '') ?? DateTime.now(),
       thumbnail: json['thumb'] as String? ?? '',

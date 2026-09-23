@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -90,10 +91,21 @@ Future<void> showImportCodeSheet(BuildContext context) async {
             Text('Import playlist code', style: GoogleFonts.spaceGrotesk(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             const Text(
-              'Paste a code from Generate. If the server has no bulk import route yet, a single playlist code still works.',
+              'Cloud playlist codes are separate from local library JSON. Full-library restore needs the Render route GET /playlist/all/:code; a single-playlist code uses GET /playlist/:code. Generating codes needs POST /playlist and POST /playlist/all.',
               style: TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
             ),
-            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () async {
+                  final ClipboardData? data = await Clipboard.getData('text/plain');
+                  final String text = data?.text?.trim() ?? '';
+                  if (text.isNotEmpty) code.text = text;
+                },
+                icon: const Icon(Icons.content_paste_rounded, size: 18),
+                label: const Text('Paste code'),
+              ),
+            ),
             TextField(
               controller: code,
               decoration: const InputDecoration(hintText: 'Playlist code'),
@@ -110,7 +122,7 @@ Future<void> showImportCodeSheet(BuildContext context) async {
                   ScaffoldMessenger.of(sheet).showSnackBar(
                     const SnackBar(
                       content: Text(
-                        'Could not fetch that code. If you need bulk restore, the server must add GET /playlist/all/:code.',
+                        'Could not fetch the code. The Render backend must provide GET /playlist/all/:code for a full-library code and GET /playlist/:code for single-playlist codes.',
                       ),
                     ),
                   );
