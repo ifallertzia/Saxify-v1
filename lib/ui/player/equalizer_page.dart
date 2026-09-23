@@ -171,7 +171,7 @@ class _SoundControlsPanelState extends State<SoundControlsPanel> {
         ]),
         if (_loading)
           const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
-        else if (info?.supported != true)
+        else if (info == null || !info.supported)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 18),
             child: Text('Equalizer is available while a song is playing on a supported Android device. Volume still works.',

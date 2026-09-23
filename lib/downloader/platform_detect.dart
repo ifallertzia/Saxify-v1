@@ -73,32 +73,60 @@ class PlatformDetect {
       return MediaPlatform.instagram;
     }
     if (_hostIs(host, 'pin.it') || host.startsWith('pinterest.') ||
-        host.contains('.pinterest.')) return MediaPlatform.pinterest;
+        host.contains('.pinterest.')) {
+      return MediaPlatform.pinterest;
+    }
     if (_hostIs(host, 'twitter.com') || _hostIs(host, 'x.com') ||
-        _hostIs(host, 't.co')) return MediaPlatform.twitter;
+        _hostIs(host, 't.co')) {
+      return MediaPlatform.twitter;
+    }
     if (_hostIs(host, 'facebook.com') || _hostIs(host, 'fb.watch') ||
-        _hostIs(host, 'fb.com')) return MediaPlatform.facebook;
+        _hostIs(host, 'fb.com')) {
+      return MediaPlatform.facebook;
+    }
     if (_hostIs(host, 'reddit.com') || _hostIs(host, 'redd.it')) {
       return MediaPlatform.reddit;
     }
-    if (_hostIs(host, 'threads.net')) return MediaPlatform.threads;
-    if (_hostIs(host, 'tiktok.com')) return MediaPlatform.tiktok;
-    if (_hostIs(host, 'twitch.tv')) return MediaPlatform.twitch;
-    if (_hostIs(host, 'snapchat.com')) return MediaPlatform.snapchat;
-    if (_hostIs(host, 'vimeo.com')) return MediaPlatform.vimeo;
+    if (_hostIs(host, 'threads.net')) {
+      return MediaPlatform.threads;
+    }
+    if (_hostIs(host, 'tiktok.com')) {
+      return MediaPlatform.tiktok;
+    }
+    if (_hostIs(host, 'twitch.tv')) {
+      return MediaPlatform.twitch;
+    }
+    if (_hostIs(host, 'snapchat.com')) {
+      return MediaPlatform.snapchat;
+    }
+    if (_hostIs(host, 'vimeo.com')) {
+      return MediaPlatform.vimeo;
+    }
     if (_hostIs(host, 'dailymotion.com') || _hostIs(host, 'dai.ly')) {
       return MediaPlatform.dailymotion;
     }
-    if (_hostIs(host, 'soundcloud.com')) return MediaPlatform.soundcloud;
-    if (_hostIs(host, 'rumble.com')) return MediaPlatform.rumble;
-    if (_hostIs(host, 'imgur.com')) return MediaPlatform.imgur;
+    if (_hostIs(host, 'soundcloud.com')) {
+      return MediaPlatform.soundcloud;
+    }
+    if (_hostIs(host, 'rumble.com')) {
+      return MediaPlatform.rumble;
+    }
+    if (_hostIs(host, 'imgur.com')) {
+      return MediaPlatform.imgur;
+    }
     if (_hostIs(host, 'likee.video') || _hostIs(host, 'likee.com')) {
       return MediaPlatform.likee;
     }
     if (_hostIs(host, 'mojapp.in') || _hostIs(host, 'moj.video') ||
-        _hostIs(host, 'moj.app')) return MediaPlatform.moj;
-    if (_hostIs(host, 'sharechat.com')) return MediaPlatform.sharechat;
-    if (_hostIs(host, 'chingari.com')) return MediaPlatform.chingari;
+        _hostIs(host, 'moj.app')) {
+      return MediaPlatform.moj;
+    }
+    if (_hostIs(host, 'sharechat.com')) {
+      return MediaPlatform.sharechat;
+    }
+    if (_hostIs(host, 'chingari.com')) {
+      return MediaPlatform.chingari;
+    }
     if (_hostIs(host, 'youtube.com') || _hostIs(host, 'youtu.be')) {
       return MediaPlatform.youtube;
     }
