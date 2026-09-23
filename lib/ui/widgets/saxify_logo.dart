@@ -31,7 +31,7 @@ class SaxifyLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final SaxifyAccent effective =
         accent ?? Theme.of(context).extension<SaxifyAccentExtension>()?.accent ??
-            SaxifyAccents.neonViolet;
+            SaxifyAccents.violetPulse;
     return SizedBox(
       width: size,
       height: size,
@@ -157,7 +157,7 @@ class SaxifyWordmark extends StatelessWidget {
   Widget build(BuildContext context) {
     final SaxifyAccent effective =
         accent ?? Theme.of(context).extension<SaxifyAccentExtension>()?.accent ??
-            SaxifyAccents.neonViolet;
+            SaxifyAccents.violetPulse;
 
     return Row(
       mainAxisSize: MainAxisSize.min,

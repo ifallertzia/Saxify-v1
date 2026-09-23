@@ -14,7 +14,7 @@ class SaxifyAccent {
     required this.primary,
     required this.secondary,
     required this.tint,
-    this.custom = false,
+    this.isCustom = false,
   });
 
   /// Stable key used for persistence (never reorder-dependent).
@@ -33,7 +33,7 @@ class SaxifyAccent {
   final Color tint;
 
   /// True for the user-made accent.
-  final bool custom;
+  final bool isCustom;
 
   List<Color> get gradientColors => <Color>[primary, secondary];
 
@@ -85,7 +85,7 @@ class SaxifyAccent {
       primary: p,
       secondary: secondary ?? this.secondary,
       tint: p.withValues(alpha: 0.18),
-      custom: custom,
+      isCustom: isCustom,
     );
   }
 
@@ -96,7 +96,7 @@ class SaxifyAccent {
         primary: primary,
         secondary: secondary,
         tint: primary.withValues(alpha: 0.18),
-        custom: true,
+        isCustom: true,
       );
 
   static const String customAccentId = 'custom-mix';

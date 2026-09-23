@@ -71,7 +71,7 @@ void main() {
         const Color(0xFF654321),
       );
       expect(mix.id, SaxifyAccent.customAccentId);
-      expect(mix.custom, isTrue);
+      expect(mix.isCustom, isTrue);
       expect(mix.primary, const Color(0xFF123456));
       expect(mix.secondary, const Color(0xFF654321));
     });
