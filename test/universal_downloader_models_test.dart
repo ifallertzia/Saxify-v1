@@ -4,7 +4,7 @@ import 'package:saxify/downloader/platform_detect.dart';
 
 void main() {
   group('universal downloader public URL policy', () {
-    test('eligible public YouTube links are allowed through to the backend', () {
+    test('eligible public YouTube links are allowed through to local yt-dlp', () {
       expect(
         PlatformDetect.detect('https://www.youtube.com/watch?v=abc').name,
         'youtube',
@@ -37,7 +37,7 @@ void main() {
     });
   });
 
-  group('backend format metadata', () {
+  group('yt-dlp format metadata', () {
     test('identifies video-only, combined, and audio formats', () {
       final MediaFormat videoOnly = MediaFormat.fromJson(<String, dynamic>{
         'format_id': '137',
@@ -68,7 +68,7 @@ void main() {
       expect(audio.hasAudio, isTrue);
     });
 
-    test('recognizes server type fields when codec metadata is omitted', () {
+    test('recognizes type fields when codec metadata is omitted', () {
       final MediaFormat videoOnly = MediaFormat.fromJson(<String, dynamic>{
         'format_id': 'v1',
         'kind': 'video_only',
@@ -83,6 +83,19 @@ void main() {
       expect(audio.hasVideo, isFalse);
       expect(audio.hasAudio, isTrue);
     });
+  });
+
+  test('open/share MIME follows the actual yt-dlp container', () {
+    final DownloadRecord record = DownloadRecord(
+      id: 'audio', url: 'https://youtu.be/abc', title: 'Mix',
+      platform: MediaPlatform.youtube, kind: DownloadKind.audio,
+      quality: 'Best', path: '/tmp/song.webm', createdAt: DateTime.utc(2026),
+    );
+    expect(record.mime, 'audio/webm');
+    record.path = '/tmp/video.mkv';
+    expect(record.mime, 'video/x-matroska');
+    record.path = '/tmp/audio.mp3';
+    expect(record.mime, 'audio/mpeg');
   });
 
   test('persists the video-only download choice', () {

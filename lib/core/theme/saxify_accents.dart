@@ -56,7 +56,7 @@ class SaxifyAccent {
       );
 }
 
-/// The 6 accents Saxify rotates through.
+/// Vivid, high-contrast accents Saxify rotates through.
 ///
 /// Neon Violet is the signature accent; the rest are alternates so the app can
 /// cycle its look every couple of minutes (or be pinned from Settings).
@@ -66,49 +66,75 @@ class SaxifyAccents {
   static const SaxifyAccent neonViolet = SaxifyAccent(
     id: 'neon-violet',
     label: 'Neon Violet',
-    primary: Color(0xFFA855F7),
-    secondary: Color(0xFF6366F1),
-    tint: Color(0x2EA855F7),
+    primary: Color(0xFFB75AFF),
+    secondary: Color(0xFF9763FF),
+    tint: Color(0x2EB75AFF),
   );
 
   static const SaxifyAccent aquaPulse = SaxifyAccent(
     id: 'aqua-pulse',
     label: 'Aqua Pulse',
-    primary: Color(0xFF22D3EE),
-    secondary: Color(0xFF3B82F6),
-    tint: Color(0x2E22D3EE),
+    primary: Color(0xFF0CE5F2),
+    secondary: Color(0xFF62B5FF),
+    tint: Color(0x2E0CE5F2),
   );
 
   static const SaxifyAccent cyberLime = SaxifyAccent(
     id: 'cyber-lime',
     label: 'Cyber Lime',
-    primary: Color(0xFFA3E635),
-    secondary: Color(0xFF22C55E),
-    tint: Color(0x2EA3E635),
+    primary: Color(0xFFBDFF3D),
+    secondary: Color(0xFF4FEF83),
+    tint: Color(0x2EBDFF3D),
   );
 
   static const SaxifyAccent sunsetCoral = SaxifyAccent(
     id: 'sunset-coral',
     label: 'Sunset Coral',
-    primary: Color(0xFFFB7185),
-    secondary: Color(0xFFF43F5E),
-    tint: Color(0x2EFB7185),
+    primary: Color(0xFFFF6774),
+    secondary: Color(0xFFFF835D),
+    tint: Color(0x2EFF6774),
   );
 
   static const SaxifyAccent magentaFlux = SaxifyAccent(
     id: 'magenta-flux',
     label: 'Magenta Flux',
-    primary: Color(0xFFF472B6),
-    secondary: Color(0xFFA21CAF),
-    tint: Color(0x2EF472B6),
+    primary: Color(0xFFFF64C8),
+    secondary: Color(0xFFE05CF2),
+    tint: Color(0x2EFF64C8),
   );
 
   static const SaxifyAccent goldRush = SaxifyAccent(
     id: 'gold-rush',
     label: 'Gold Rush',
-    primary: Color(0xFFFCD34D),
-    secondary: Color(0xFFF59E0B),
-    tint: Color(0x2EFCD34D),
+    primary: Color(0xFFFFDA46),
+    secondary: Color(0xFFFFB643),
+    tint: Color(0x2EFFDA46),
+  );
+
+  static const SaxifyAccent silver = SaxifyAccent(
+    id: 'silver', label: 'Silver',
+    primary: Color(0xFFE8EDF5), secondary: Color(0xFFBAC8D8),
+    tint: Color(0x2EE8EDF5),
+  );
+  static const SaxifyAccent electricBlue = SaxifyAccent(
+    id: 'electric-blue', label: 'Electric Blue',
+    primary: Color(0xFF72B9FF), secondary: Color(0xFF4A96FF),
+    tint: Color(0x2E72B9FF),
+  );
+  static const SaxifyAccent vividOrange = SaxifyAccent(
+    id: 'vivid-orange', label: 'Vivid Orange',
+    primary: Color(0xFFFFA235), secondary: Color(0xFFFF7640),
+    tint: Color(0x2EFFA235),
+  );
+  static const SaxifyAccent mint = SaxifyAccent(
+    id: 'mint', label: 'Mint',
+    primary: Color(0xFF44F2BB), secondary: Color(0xFF39D8D4),
+    tint: Color(0x2E44F2BB),
+  );
+  static const SaxifyAccent ruby = SaxifyAccent(
+    id: 'ruby', label: 'Ruby',
+    primary: Color(0xFFFF658C), secondary: Color(0xFFFF4867),
+    tint: Color(0x2EFF658C),
   );
 
   static const List<SaxifyAccent> all = <SaxifyAccent>[
@@ -118,6 +144,11 @@ class SaxifyAccents {
     sunsetCoral,
     magentaFlux,
     goldRush,
+    silver,
+    electricBlue,
+    vividOrange,
+    mint,
+    ruby,
   ];
 
   static SaxifyAccent byId(String? id) {
@@ -135,8 +166,6 @@ class SaxifyAccents {
   }
 }
 
-/// Makes the live accent reachable through `Theme.of(context)` so deep widgets
-/// can paint themselves without an extra provider lookup.
 /// Makes the live accent reachable through `Theme.of(context)` so deep widgets
 /// can paint themselves without an extra provider lookup.
 @immutable

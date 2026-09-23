@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/saxify_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/artist.dart';
@@ -158,7 +158,7 @@ class _PlaylistsTab extends StatelessWidget {
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
         title: Text('Create playlist',
-            style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+            style: SaxifyFonts.display(fontWeight: FontWeight.w700)),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -218,7 +218,7 @@ class _PlaylistsTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text('Create playlist',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: SaxifyFonts.display(
                             fontSize: 15, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 2),
                     const Text(
@@ -281,7 +281,7 @@ class _PlaylistsTab extends StatelessWidget {
                           Text(playlist.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.spaceGrotesk(
+                              style: SaxifyFonts.display(
                                   fontSize: 14.5, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 3),
                           Text(
@@ -791,7 +791,7 @@ class _CollectionHeader extends StatelessWidget {
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.spaceGrotesk(
+                      style: SaxifyFonts.display(
                           fontSize: 22, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 5),
@@ -806,11 +806,13 @@ class _CollectionHeader extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: <Widget>[
-              NeonButton(
+              Expanded(
+                child: NeonButton(
                 label: 'Play',
                 icon: Icons.play_arrow_rounded,
                 expand: true,
                 onPressed: onPlay,
+              ),
               ),
               const SizedBox(width: 10),
               IconButton(

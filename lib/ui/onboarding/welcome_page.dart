@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/saxify_fonts.dart';
 
 import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
@@ -70,7 +70,7 @@ class _WelcomePageState extends State<WelcomePage> {
                       Text(
                         "Who's listening?",
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.spaceGrotesk(
+                        style: SaxifyFonts.display(
                           fontSize: constraints.maxWidth < 360 ? 27 : 32,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.7,

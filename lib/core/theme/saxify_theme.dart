@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'saxify_fonts.dart';
 
 import 'saxify_accents.dart';
 
@@ -33,28 +33,28 @@ class SaxifyTheme {
   static const double radiusXl = 32;
 
   static ThemeData build(SaxifyAccent accent) {
-    final TextTheme base = GoogleFonts.interTextTheme(
+    final TextTheme base = SaxifyFonts.textTheme(
       ThemeData(brightness: Brightness.dark).textTheme,
     );
 
     final TextTheme textTheme = base.copyWith(
-      displayLarge: GoogleFonts.spaceGrotesk(
+      displayLarge: SaxifyFonts.display(
           textStyle: base.displayLarge?.copyWith(fontWeight: FontWeight.w700)),
-      displayMedium: GoogleFonts.spaceGrotesk(
+      displayMedium: SaxifyFonts.display(
           textStyle: base.displayMedium?.copyWith(fontWeight: FontWeight.w700)),
-      displaySmall: GoogleFonts.spaceGrotesk(
+      displaySmall: SaxifyFonts.display(
           textStyle: base.displaySmall?.copyWith(fontWeight: FontWeight.w700)),
-      headlineLarge: GoogleFonts.spaceGrotesk(
+      headlineLarge: SaxifyFonts.display(
           textStyle: base.headlineLarge?.copyWith(fontWeight: FontWeight.w700)),
-      headlineMedium: GoogleFonts.spaceGrotesk(
+      headlineMedium: SaxifyFonts.display(
           textStyle: base.headlineMedium?.copyWith(fontWeight: FontWeight.w700)),
-      headlineSmall: GoogleFonts.spaceGrotesk(
+      headlineSmall: SaxifyFonts.display(
           textStyle: base.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
-      titleLarge: GoogleFonts.spaceGrotesk(
+      titleLarge: SaxifyFonts.display(
           textStyle: base.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
-      titleMedium: GoogleFonts.spaceGrotesk(
+      titleMedium: SaxifyFonts.display(
           textStyle: base.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-      titleSmall: GoogleFonts.spaceGrotesk(
+      titleSmall: SaxifyFonts.display(
           textStyle: base.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
       labelLarge:
           base.labelLarge?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.2),
@@ -88,6 +88,7 @@ class SaxifyTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: SaxifyFonts.family,
       brightness: Brightness.dark,
       colorScheme: scheme,
       scaffoldBackgroundColor: SaxifyColors.background,
@@ -105,7 +106,7 @@ class SaxifyTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle.light,
-        titleTextStyle: GoogleFonts.spaceGrotesk(
+        titleTextStyle: SaxifyFonts.display(
           fontSize: 20,
           fontWeight: FontWeight.w700,
           color: SaxifyColors.textPrimary,
@@ -241,9 +242,9 @@ class SaxifyTheme {
         unselectedLabelColor: SaxifyColors.textMuted,
         indicatorColor: accent.primary,
         dividerColor: Colors.transparent,
-        labelStyle: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
+        labelStyle: SaxifyFonts.display(fontWeight: FontWeight.w700),
         unselectedLabelStyle:
-            GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w500),
+            SaxifyFonts.display(fontWeight: FontWeight.w500),
       ),
       listTileTheme: const ListTileThemeData(
         iconColor: SaxifyColors.textMuted,

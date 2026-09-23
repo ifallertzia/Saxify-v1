@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/saxify_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/playlist.dart';
@@ -32,7 +32,7 @@ class _AddToPlaylistSheet extends StatelessWidget {
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
         title: Text('New playlist',
-            style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+            style: SaxifyFonts.display(fontWeight: FontWeight.w700)),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -105,7 +105,7 @@ class _AddToPlaylistSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text('Add to playlist',
-                              style: GoogleFonts.spaceGrotesk(
+                              style: SaxifyFonts.display(
                                   fontSize: 16, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 2),
                           Text(

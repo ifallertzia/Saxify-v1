@@ -27,7 +27,7 @@ class ArtistProfile {
   final String? deezerId;
   final int? fanCount;
 
-  bool get confident => matchScore > 0.8 && source != 'fallback';
+  bool get confident => matchScore >= 0.8 && imageUrl.isNotEmpty && source != 'fallback';
 }
 
 class ArtistService {
@@ -39,21 +39,29 @@ class ArtistService {
   final http.Client _client;
   final Map<String, ArtistProfile> _memory = <String, ArtistProfile>{};
 
-  Future<ArtistProfile> resolve(String name) async {
+  final Map<String, Future<ArtistProfile>> _inFlight = <String, Future<ArtistProfile>>{};
+
+  Future<ArtistProfile> resolve(String name) {
     final String key = TextMatch.norm(name);
     final ArtistProfile? cached = _memory[key];
-    if (cached != null) return cached;
+    if (cached != null) return Future<ArtistProfile>.value(cached);
+    final Future<ArtistProfile>? pending = _inFlight[key];
+    if (pending != null) return pending;
+    final Future<ArtistProfile> future = _find(name);
+    _inFlight[key] = future;
+    return future.whenComplete(() { _inFlight.remove(key); });
+  }
 
+  Future<ArtistProfile> _find(String name) async {
+    // Do not accept the FIRST similar-looking Deezer result blindly; a wrong
+    // face is worse than a fallback. Only cache high-confidence portraits.
     ArtistProfile? found = await _deezer(name);
-    found ??= await _itunes(name);
-    found ??= await _youtubeLogo(name);
-    found ??= ArtistProfile(
-      name: name,
-      imageUrl: '',
-      matchScore: 0,
-      source: 'fallback',
-    );
-    _memory[key] = found;
+    if (found?.confident != true) found = await _itunes(name);
+    if (found?.confident != true) found = await _youtubeLogo(name);
+    if (found?.confident != true) {
+      return ArtistProfile(name: name, imageUrl: '', matchScore: 0, source: 'fallback');
+    }
+    _memory[TextMatch.norm(name)] = found!;
     return found;
   }
 

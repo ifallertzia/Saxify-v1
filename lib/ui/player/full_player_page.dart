@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/saxify_fonts.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 
@@ -27,7 +27,40 @@ class FullPlayerPage extends StatefulWidget {
 class _FullPlayerPageState extends State<FullPlayerPage> {
   bool _dragging = false;
   double _dragValue = 0;
-  bool _showVolume = false;
+
+  Future<void> _showSoundSheet() => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (BuildContext sheetContext) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.72,
+      minChildSize: 0.38,
+      maxChildSize: 0.94,
+      builder: (BuildContext context, ScrollController controller) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  Colors.white.withValues(alpha: 0.20),
+                  SaxifyColors.surface.withValues(alpha: 0.94),
+                  SaxifyColors.background.withValues(alpha: 0.96),
+                ],
+              ),
+              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.30))),
+            ),
+            child: SafeArea(top: false,
+              child: SoundControlsPanel(controller: controller)),
+          ),
+        ),
+      ),
+    ),
+  );
 
   Future<void> _showQueueSheet() {
     return showModalBottomSheet<void>(
@@ -63,7 +96,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             children: <Widget>[
               const SizedBox(height: 16),
               Text('Playback speed',
-                  style: GoogleFonts.spaceGrotesk(
+                  style: SaxifyFonts.display(
                       fontSize: 15, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               for (final double s in speeds)
@@ -102,7 +135,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                   size: 46, color: SaxifyColors.textFaint),
               const SizedBox(height: 14),
               Text('Nothing playing',
-                  style: GoogleFonts.spaceGrotesk(
+                  style: SaxifyFonts.display(
                       fontSize: 16, fontWeight: FontWeight.w700)),
               const SizedBox(height: 18),
               TextButton(
@@ -250,7 +283,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                               song.title,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.spaceGrotesk(
+                              style: SaxifyFonts.display(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
                                 height: 1.2,
@@ -401,27 +434,14 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                   child: Row(
                     children: <Widget>[
                       IconButton(
-                        icon: Icon(
-                          _showVolume
-                              ? Icons.volume_up_rounded
-                              : Icons.tune_rounded,
-                          size: 20,
-                          color: SaxifyColors.textMuted,
-                        ),
-                        onPressed: () =>
-                            setState(() => _showVolume = !_showVolume),
+                        tooltip: 'Sound & equalizer',
+                        icon: const Icon(Icons.tune_rounded, size: 22),
+                        onPressed: _showSoundSheet,
                       ),
-                      if (_showVolume)
-                        Expanded(
-                          child: Slider(
-                            value: playback.volume,
-                            onChanged: playback.setVolume,
-                          ),
-                        )
-                      else
-                        Expanded(
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: <Widget>[
                               _ChipButton(
                                 label: '${playback.speed}x',
@@ -430,8 +450,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                               ),
                               _ChipButton(
                                 label: playback.sleepRemaining == null
-                                    ? 'Sleep'
-                                    : Fmt.clock(playback.sleepRemaining!),
+                                    ? 'Sleep' : Fmt.clock(playback.sleepRemaining!),
                                 icon: Icons.bedtime_rounded,
                                 active: playback.sleepRemaining != null,
                                 onTap: () => _showSleepSheet(playback),
@@ -444,15 +463,12 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                               _ChipButton(
                                 label: 'EQ',
                                 icon: Icons.graphic_eq_rounded,
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => const EqualizerPage(),
-                                  ),
-                                ),
+                                onTap: _showSoundSheet,
                               ),
                             ],
                           ),
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -614,7 +630,7 @@ class _SleepSheet extends StatelessWidget {
           children: <Widget>[
             const SizedBox(height: 16),
             Text('Sleep timer',
-                style: GoogleFonts.spaceGrotesk(
+                style: SaxifyFonts.display(
                     fontSize: 15, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             const Text('Pause playback automatically',
@@ -696,7 +712,7 @@ class _QueueSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text('Up next',
-                              style: GoogleFonts.spaceGrotesk(
+                              style: SaxifyFonts.display(
                                   fontSize: 16, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 2),
                           Text(

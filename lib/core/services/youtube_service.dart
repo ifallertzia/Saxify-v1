@@ -87,7 +87,7 @@ class YoutubeService {
     required String author,
     Duration? duration,
   }) {
-    if (duration == null || duration.inSeconds < 25 || duration.inHours >= 1) {
+    if (duration == null || duration.inSeconds < 25) {
       return false;
     }
     final String titleText = title.toLowerCase();
@@ -111,6 +111,16 @@ class YoutubeService {
         RegExp(r'\bosho\b', caseSensitive: false).hasMatch('$titleText $authorText') &&
             RegExp(r'\b(meditation|dynamic|kundalini|discourse|mantra|music)\b', caseSensitive: false)
                 .hasMatch(titleText);
+    // Long-form listening is not a normal 3-minute song, but Osho sessions,
+    // continuous mixes, full albums and instrumentals are real music. Do not
+    // filter them out simply because they exceed an hour.
+    if (duration.inHours >= 1) {
+      final bool longMusic = RegExp(
+        r'\b(mix|nonstop|meditation|instrumental|lofi|lo-fi|full album|playlist|bhajan|kirtan|qawwali|ghazal|concert|sufi)\b',
+      ).hasMatch(titleText);
+      return oshoMeditation ||
+          (longMusic && (musicTitle.hasMatch(titleText) || musicChannel.hasMatch(authorText)));
+    }
     return musicTitle.hasMatch(titleText) ||
         (plausibleSongLength && musicChannel.hasMatch(authorText)) ||
         oshoMeditation;

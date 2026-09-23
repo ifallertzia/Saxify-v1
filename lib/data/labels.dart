@@ -42,7 +42,7 @@ class MusicBrands {
     MusicBrand(
       name: 'Sony Music India',
       handle: 'SonyMusicIndia',
-      channelId: 'UC56gTxA3uTQqKqHCejS3g9A',
+      channelId: 'UC56gTxNs4f9xZ7Pa2i5xNzg',
       region: 'India',
     ),
     MusicBrand(

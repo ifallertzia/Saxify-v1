@@ -27,6 +27,7 @@ class PlatformDetect {
 
   static const List<MediaPlatform> manual = <MediaPlatform>[
     MediaPlatform.auto,
+    MediaPlatform.youtube,
     MediaPlatform.instagram,
     MediaPlatform.pinterest,
     MediaPlatform.twitter,
@@ -62,46 +63,80 @@ class PlatformDetect {
     }
   }
 
+  static bool _hostIs(String host, String domain) =>
+      host == domain || host.endsWith('.$domain');
+
   static MediaPlatform detect(String raw) {
     final Uri? uri = Uri.tryParse(raw.trim());
     final String host = (uri?.host ?? raw).toLowerCase();
-    if (host.contains('instagram.com') || host.contains('instagr.am')) {
+    if (_hostIs(host, 'instagram.com') || _hostIs(host, 'instagr.am')) {
       return MediaPlatform.instagram;
     }
-    if (host.contains('pinterest.')) return MediaPlatform.pinterest;
-    if (host.contains('twitter.com') || host.contains('x.com') || host.contains('t.co')) {
+    if (_hostIs(host, 'pin.it') || host.startsWith('pinterest.') ||
+        host.contains('.pinterest.')) {
+      return MediaPlatform.pinterest;
+    }
+    if (_hostIs(host, 'twitter.com') || _hostIs(host, 'x.com') ||
+        _hostIs(host, 't.co')) {
       return MediaPlatform.twitter;
     }
-    if (host.contains('facebook.com') || host.contains('fb.watch') || host.contains('fb.com')) {
+    if (_hostIs(host, 'facebook.com') || _hostIs(host, 'fb.watch') ||
+        _hostIs(host, 'fb.com')) {
       return MediaPlatform.facebook;
     }
-    if (host.contains('reddit.com') || host.contains('redd.it')) return MediaPlatform.reddit;
-    if (host.contains('threads.net')) return MediaPlatform.threads;
-    if (host.contains('tiktok.com')) return MediaPlatform.tiktok;
-    if (host.contains('twitch.tv')) return MediaPlatform.twitch;
-    if (host.contains('snapchat.com')) return MediaPlatform.snapchat;
-    if (host.contains('vimeo.com')) return MediaPlatform.vimeo;
-    if (host.contains('dailymotion.com') || host.contains('dai.ly')) {
+    if (_hostIs(host, 'reddit.com') || _hostIs(host, 'redd.it')) {
+      return MediaPlatform.reddit;
+    }
+    if (_hostIs(host, 'threads.net')) {
+      return MediaPlatform.threads;
+    }
+    if (_hostIs(host, 'tiktok.com')) {
+      return MediaPlatform.tiktok;
+    }
+    if (_hostIs(host, 'twitch.tv')) {
+      return MediaPlatform.twitch;
+    }
+    if (_hostIs(host, 'snapchat.com')) {
+      return MediaPlatform.snapchat;
+    }
+    if (_hostIs(host, 'vimeo.com')) {
+      return MediaPlatform.vimeo;
+    }
+    if (_hostIs(host, 'dailymotion.com') || _hostIs(host, 'dai.ly')) {
       return MediaPlatform.dailymotion;
     }
-    if (host.contains('soundcloud.com')) return MediaPlatform.soundcloud;
-    if (host.contains('rumble.com')) return MediaPlatform.rumble;
-    if (host.contains('imgur.com')) return MediaPlatform.imgur;
-    if (host.contains('likee.')) return MediaPlatform.likee;
-    if (host.contains('mojapp.in') || host.contains('moj.video')) return MediaPlatform.moj;
-    if (host.contains('sharechat.com')) return MediaPlatform.sharechat;
-    if (host.contains('chingari')) return MediaPlatform.chingari;
-    if (host.contains('youtube.com') || host.contains('youtu.be')) {
+    if (_hostIs(host, 'soundcloud.com')) {
+      return MediaPlatform.soundcloud;
+    }
+    if (_hostIs(host, 'rumble.com')) {
+      return MediaPlatform.rumble;
+    }
+    if (_hostIs(host, 'imgur.com')) {
+      return MediaPlatform.imgur;
+    }
+    if (_hostIs(host, 'likee.video') || _hostIs(host, 'likee.com')) {
+      return MediaPlatform.likee;
+    }
+    if (_hostIs(host, 'mojapp.in') || _hostIs(host, 'moj.video') ||
+        _hostIs(host, 'moj.app')) {
+      return MediaPlatform.moj;
+    }
+    if (_hostIs(host, 'sharechat.com')) {
+      return MediaPlatform.sharechat;
+    }
+    if (_hostIs(host, 'chingari.com')) {
+      return MediaPlatform.chingari;
+    }
+    if (_hostIs(host, 'youtube.com') || _hostIs(host, 'youtu.be')) {
       return MediaPlatform.youtube;
     }
-    if (host.contains('.')) return MediaPlatform.other;
     return MediaPlatform.other;
   }
 
   static bool isYoutube(String raw) => detect(raw) == MediaPlatform.youtube;
 
   /// Reject malformed or obviously gated links before sending them to the
-  /// downloader. YouTube links are supported by the configured yt-dlp backend;
+  /// downloader. Public YouTube links are supported by bundled yt-dlp;
   /// private/login content is never bypassed.
   static String? blockedReason(String raw) {
     final String value = raw.trim().toLowerCase();
@@ -110,7 +145,12 @@ class PlatformDetect {
     if (uri == null || !uri.hasScheme || (uri.scheme != 'http' && uri.scheme != 'https')) {
       return 'That does not look like a public http(s) link.';
     }
-    if (uri.host.isEmpty) return 'That link is missing a website host.';
+    final String host = uri.host.toLowerCase();
+    if (host.isEmpty || !host.contains('.') || host == 'localhost' ||
+        host.endsWith('.local') || host.startsWith('127.') ||
+        host.startsWith('192.168.') || host.startsWith('10.')) {
+      return 'Use a public website link, not a device or local-network address.';
+    }
     if (value.contains('/login') ||
         value.contains('/private') ||
         value.contains('paywall') ||
@@ -121,16 +161,22 @@ class PlatformDetect {
     return null;
   }
 
+  static String normalizeUrl(String raw) {
+    final String value = raw.trim();
+    if (value.startsWith('https://') || value.startsWith('http://')) return value;
+    return value.contains('.') ? 'https://$value' : value;
+  }
+
+  static bool looksLikeUrl(String raw) => blockedReason(normalizeUrl(raw)) == null;
+
   static List<String> splitUrls(String raw) {
-    final RegExp link = RegExp(r'https?://[^\s]+', caseSensitive: false);
-    final Iterable<RegExpMatch> matches = link.allMatches(raw);
     final List<String> out = <String>[];
-    for (final RegExpMatch match in matches) {
-      var url = match.group(0) ?? '';
-      url = url.replaceAll(RegExp(r'[),.;]+$'), '');
-      if (url.isNotEmpty && !out.contains(url)) out.add(url);
+    final RegExp tokens = RegExp(r"[^\s,;]+", caseSensitive: false);
+    for (final RegExpMatch token in tokens.allMatches(raw)) {
+      final String candidate = normalizeUrl((token.group(0) ?? '')
+          .replaceAll(RegExp(r'[).;]+$'), ''));
+      if (looksLikeUrl(candidate) && !out.contains(candidate)) out.add(candidate);
     }
-    if (out.isEmpty && raw.trim().isNotEmpty) out.add(raw.trim());
     return out;
   }
 }

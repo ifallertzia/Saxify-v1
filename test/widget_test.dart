@@ -53,8 +53,9 @@ void main() {
   });
 
   group('accents', () {
-    test('six accents ship and byId falls back', () {
-      expect(SaxifyAccents.all.length, 6);
+    test('vivid accents include Silver and byId falls back', () {
+      expect(SaxifyAccents.all.length, greaterThan(6));
+      expect(SaxifyAccents.byId('silver').label, 'Silver');
       expect(SaxifyAccents.byId('neon-violet'), SaxifyAccents.neonViolet);
       expect(SaxifyAccents.byId('nope'), SaxifyAccents.neonViolet);
     });

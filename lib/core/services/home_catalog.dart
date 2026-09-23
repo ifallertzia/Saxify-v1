@@ -77,6 +77,7 @@ class HomeCatalog extends ChangeNotifier {
     ArtistRef(channelId: '', name: 'Sonu Nigam', imageUrl: ''),
     ArtistRef(channelId: '', name: 'Lata Mangeshkar', imageUrl: ''),
     ArtistRef(channelId: '', name: 'Jubin Nautiyal', imageUrl: ''),
+    ArtistRef(channelId: '', name: 'Darshan Raval', imageUrl: ''),
     ArtistRef(channelId: '', name: 'Diljit Dosanjh', imageUrl: ''),
     ArtistRef(channelId: '', name: 'Anirudh Ravichander', imageUrl: ''),
     ArtistRef(channelId: '', name: 'Neha Kakkar', imageUrl: ''),

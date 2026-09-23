@@ -7,7 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
-import '../../config/backend_config.dart';
+import '../../downloader/downloader_models.dart';
+import '../../downloader/local_downloader.dart';
+
 import '../../config/branding.dart';
 import '../models/song.dart';
 import '../utils/filenames.dart';
@@ -69,18 +71,23 @@ class MusicDownloadJob {
   }
 }
 
-/// Downloads a song using the same stream resolver as the player, then keeps
-/// an app-private copy for offline playback and a public Download/Saxify copy
-/// where the platform supports it. Downloading never touches play/pause/seek.
+/// Android song downloads use the bundled on-device yt-dlp + FFmpeg pipeline;
+/// other platforms fall back to the existing stream resolver. The app keeps
+/// an app-private offline copy and tries to publish a public Downloads copy.
+/// Downloading never touches play/pause/seek.
 class MusicDownloadService extends ChangeNotifier {
-  MusicDownloadService({Dio? dio, SharedPreferences? prefs})
+  MusicDownloadService({Dio? dio, SharedPreferences? prefs, LocalDownloader? local})
       : _dio = dio ?? Dio(),
-        _prefs = prefs {
+        _prefs = prefs,
+        _local = local ?? LocalDownloader() {
     jobs.addAll(_readJobs());
   }
 
   static const String _historyKey = 'saxify.music_downloads.v1';
   final Dio _dio;
+  final LocalDownloader _local;
+  String? _localJobId;
+  bool _cancelRequested = false;
   final SharedPreferences? _prefs;
   final List<MusicDownloadJob> jobs = <MusicDownloadJob>[];
   CancelToken? _token;
@@ -141,7 +148,7 @@ class MusicDownloadService extends ChangeNotifier {
     );
   }
 
-  Future<MusicDownloadJob> enqueue(Song song, PlaybackService playback) async {
+  Future<MusicDownloadJob> enqueue(Song song, PlaybackService? playback) async {
     final MusicDownloadJob? existing = jobFor(song.id);
     if (existing != null &&
         (existing.phase == MusicDownloadPhase.running ||
@@ -160,7 +167,7 @@ class MusicDownloadService extends ChangeNotifier {
     return job;
   }
 
-  Future<void> _pump(PlaybackService playback) async {
+  Future<void> _pump(PlaybackService? playback) async {
     if (_busy) return;
     _busy = true;
     try {
@@ -185,92 +192,110 @@ class MusicDownloadService extends ChangeNotifier {
     }
   }
 
-  Future<void> _run(MusicDownloadJob job, PlaybackService playback) async {
+  Future<void> _run(MusicDownloadJob job, PlaybackService? playback) async {
+    _cancelRequested = false;
     _token = CancelToken();
     File? temp;
     try {
-      final String streamUrl = await playback
-          .resolvePlayableStreamUrl(VideoId(job.song.id))
-          .timeout(const Duration(seconds: 35));
-      final Directory cache = await getTemporaryDirectory();
-      final String filename = Filenames.saxify('${job.song.title}_${job.song.id}', 'mp3');
-      temp = File('${cache.path}/$filename.part');
-      if (temp.existsSync()) await temp.delete();
-
-      DateTime lastNotify = DateTime.fromMillisecondsSinceEpoch(0);
-      await _dio.download(
-        streamUrl,
-        temp.path,
-        cancelToken: _token,
-        options: Options(
-          headers: BackendConfig.downloadHeaders(),
-          receiveTimeout: const Duration(minutes: 12),
-          sendTimeout: const Duration(seconds: 20),
-        ),
-        onReceiveProgress: (int received, int total) {
-          job.received = received;
-          job.fraction = total <= 0 ? 0 : (received / total).clamp(0.0, 1.0);
-          final DateTime now = DateTime.now();
-          if (now.difference(lastNotify).inMilliseconds >= 180 ||
-              (total > 0 && received >= total)) {
-            lastNotify = now;
+      File offlineFile;
+      String mime;
+      if (_local.supported) {
+        // Android: use the SAME bundled yt-dlp pipeline as Add link / Bulk.
+        // yt-dlp + FFmpeg produce a real MP3, not a renamed WebM/M4A stream.
+        final String jobId = LocalDownloader.newJobId();
+        _localJobId = jobId;
+        final LocalFile result = await _local.download(
+          url: 'https://www.youtube.com/watch?v=${job.song.id}',
+          jobId: jobId,
+          kind: DownloadKind.audio,
+          onProgress: (double value) {
+            if (_cancelRequested) return;
+            job.fraction = value;
             notifyListeners();
-          }
-        },
-      );
-
-      final int size = await temp.length();
-      final RandomAccessFile raf = await temp.open();
+          },
+        );
+        offlineFile = File(result.path);
+        mime = result.mime;
+      } else {
+        // Other platforms: stream-resolver fallback (still no Saxify backend).
+        // Preserve the actual container, never label raw audio as MP3.
+        if (playback == null) throw StateError('Player is required on this platform');
+        final String streamUrl = await playback
+            .resolvePlayableStreamUrl(VideoId(job.song.id))
+            .timeout(const Duration(seconds: 35));
+        final String streamMime = Uri.tryParse(streamUrl)?.queryParameters['mime'] ?? '';
+        final String ext = streamMime.contains('webm') ? 'webm' : 'm4a';
+        mime = ext == 'webm' ? 'audio/webm' : 'audio/mp4';
+        final Directory documents = await getApplicationDocumentsDirectory();
+        final Directory folder = Directory('${documents.path}/${SaxifyBranding.downloadFolderName}/Music');
+        await folder.create(recursive: true);
+        offlineFile = File('${folder.path}/${Filenames.saxify('${job.song.title}_${job.song.id}', ext)}');
+        temp = File('${offlineFile.path}.part');
+        if (temp.existsSync()) await temp.delete();
+        await _dio.download(
+          streamUrl,
+          temp.path,
+          cancelToken: _token,
+          options: Options(receiveTimeout: const Duration(minutes: 12)),
+          onReceiveProgress: (int got, int all) {
+            job.received = got;
+            job.fraction = all <= 0 ? 0 : (got / all).clamp(0.0, 0.96);
+            notifyListeners();
+          },
+        );
+        await temp.rename(offlineFile.path);
+      }
+      if (_cancelRequested) {
+        await offlineFile.delete();
+        throw StateError('Download cancelled');
+      }
+      final int size = await offlineFile.length();
+      final RandomAccessFile raf = await offlineFile.open();
       final List<int> head = await raf.read(32);
       await raf.close();
       if (Filenames.looksCorrupt(head, size)) {
-        throw Exception('Downloaded file looks empty or is not audio');
+        await offlineFile.delete();
+        throw StateError('Downloaded audio is empty or invalid');
       }
-
-      final Directory documents = await getApplicationDocumentsDirectory();
-      final Directory privateFolder = Directory('${documents.path}/${SaxifyBranding.downloadFolderName}/Music');
-      if (!privateFolder.existsSync()) privateFolder.createSync(recursive: true);
-      final File offlineFile = File('${privateFolder.path}/$filename');
-      if (offlineFile.existsSync()) await offlineFile.delete();
-      await temp.copy(offlineFile.path);
       job.offlinePath = offlineFile.path;
       job.size = size;
 
       SavedFile? publicFile;
       try {
         publicFile = await NativeBridge.saveToDownloads(
-          sourcePath: temp.path,
-          displayName: filename,
-          mime: 'audio/mpeg',
+          sourcePath: offlineFile.path,
+          displayName: Filenames.saxify('${job.song.title}_${job.song.id}', offlineFile.path.split('.').last),
+          mime: mime,
         );
       } catch (e) {
-        debugPrint('[Saxify][MusicDownloads] public copy failed: $e');
+        debugPrint('Public song copy unavailable: $e');
       }
-      job.savedPath = publicFile?.path;
+      if (_cancelRequested) {
+        await NativeBridge.deleteDownload(uri: publicFile?.uri,
+          path: publicFile?.uri?.startsWith('file:') == true ? publicFile?.path : null);
+        await offlineFile.delete();
+        throw StateError('Download cancelled');
+      }
+      job.savedPath = publicFile?.uri?.startsWith('file:') == true
+          ? publicFile?.path : null;
       job.savedUri = publicFile?.uri;
       job.phase = MusicDownloadPhase.done;
       job.fraction = 1;
       job.error = null;
       await _persist();
     } on DioException catch (e) {
-      if (CancelToken.isCancel(e)) {
-        job.phase = MusicDownloadPhase.cancelled;
-        job.error = 'Download cancelled';
-      } else {
-        job.phase = MusicDownloadPhase.failed;
-        job.error = e.message ?? 'Network error';
-      }
-      _deleteTemp(temp);
+      job.phase = CancelToken.isCancel(e) ? MusicDownloadPhase.cancelled : MusicDownloadPhase.failed;
+      job.error = job.phase == MusicDownloadPhase.cancelled ? 'Download cancelled' : (e.message ?? 'Network error');
     } catch (e) {
-      job.phase = MusicDownloadPhase.failed;
-      job.error = '$e';
-      _deleteTemp(temp);
+      job.phase = _cancelRequested || localDownloadError(e).toLowerCase().contains('cancel')
+          ? MusicDownloadPhase.cancelled : MusicDownloadPhase.failed;
+      job.error = localDownloadError(e);
     } finally {
+      _deleteTemp(temp);
       _token = null;
+      _localJobId = null;
       notifyListeners();
     }
-
-    if (job.phase == MusicDownloadPhase.done) _deleteTemp(temp);
   }
 
   void _deleteTemp(File? file) {
@@ -287,11 +312,14 @@ class MusicDownloadService extends ChangeNotifier {
       }
       return;
     }
+    _cancelRequested = true;
     _token?.cancel('user');
+    final String? id = _localJobId;
+    if (id != null) _local.cancel(id);
   }
 
   Future<void> delete(MusicDownloadJob job, {PlaybackService? playback}) async {
-    if (job == _activeJob) _token?.cancel('user');
+    if (job == _activeJob) cancel(job);
     if (job.offlinePath != null) {
       try {
         final File offline = File(job.offlinePath!);

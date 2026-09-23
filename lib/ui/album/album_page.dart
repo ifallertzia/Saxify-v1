@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/saxify_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/album_card.dart';
@@ -123,7 +123,7 @@ class _AlbumPageState extends State<AlbumPage> {
                                     widget.album.title,
                                     maxLines: 3,
                                     overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.spaceGrotesk(
+                                    style: SaxifyFonts.display(
                                       fontSize: 23,
                                       fontWeight: FontWeight.w700,
                                       height: 1.12,
@@ -151,13 +151,15 @@ class _AlbumPageState extends State<AlbumPage> {
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
                   child: Row(
                     children: <Widget>[
-                      NeonButton(
+                      Expanded(
+                        child: NeonButton(
                         label: 'Play',
                         icon: Icons.play_arrow_rounded,
                         expand: true,
                         onPressed: tracks.isEmpty
                             ? null
                             : () => playback.playQueue(tracks, startIndex: 0),
+                      ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(

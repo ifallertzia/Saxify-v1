@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/saxify_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/song.dart';
@@ -109,7 +109,7 @@ class MiniPlayer extends StatelessWidget {
                               song.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.spaceGrotesk(
+                              style: SaxifyFonts.display(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
                                 color: SaxifyColors.textPrimary,
