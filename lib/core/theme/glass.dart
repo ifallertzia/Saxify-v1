@@ -880,11 +880,10 @@ class LoadingRail extends StatelessWidget {
 }
 
 class _Shimmer extends StatefulWidget {
-  const _Shimmer({required this.width, required this.height, this.radius = 12});
+  const _Shimmer({required this.width, required this.height});
 
   final double width;
   final double height;
-  final double radius;
 
   @override
   State<_Shimmer> createState() => _ShimmerState();
@@ -910,7 +909,7 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.radius),
+            borderRadius: BorderRadius.circular(12),
             gradient: LinearGradient(
               begin: Alignment(-1.5 + t * 3, 0),
               end: Alignment(-0.5 + t * 3, 0),
