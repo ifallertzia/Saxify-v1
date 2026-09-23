@@ -58,7 +58,7 @@ class LocalDownloader(private val context: Context) : EventChannel.StreamHandler
         return mapOf(
             "title" to (video.title ?: "Untitled"),
             "thumbnail" to (video.thumbnail ?: ""),
-            "duration" to "${video.duration / 60}:${(video.duration % 60).toString().padLeft(2, '0')}",
+            "duration" to "${video.duration / 60}:${(video.duration % 60).toString().padStart(2, '0')}",
             "formats" to (video.formats ?: emptyList()).map { format ->
                 mapOf(
                     "format_id" to (format.formatId ?: ""),

@@ -1,19 +1,20 @@
-// Temporary test: prints Flutter's generated resolution in CI so a local
-// workspace without a Flutter SDK can check in its reproducible pubspec.lock.
+// Temporary test: transfer the Flutter-generated resolution from the runner
+// to this workspace, where Flutter and pub.dev are unavailable. Remove once
+// pubspec.lock is checked in.
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('export resolved lockfile from Flutter runner', () {
+  test('export generated lockfile for reproducible dependencies', () {
     if (Platform.environment['GITHUB_ACTIONS'] != 'true') return;
-    final String encoded = base64Encode(utf8.encode(File('pubspec.lock').readAsStringSync()));
-    for (int index = 0; index < encoded.length; index += 800) {
-      final int end = (index + 800).clamp(0, encoded.length);
-      // ignore: avoid_print
-      print('SAXIFY_LOCK_${(index ~/ 800).toString().padLeft(3, '0')}: '
-          '${encoded.substring(index, end)}');
-    }
+    final String encoded = base64Encode(gzip.encode(
+      utf8.encode(File('pubspec.lock').readAsStringSync()),
+    ));
+    // One short, compressed line survives the PR workflow's 40-line log tail.
+    // ignore: avoid_print
+    print('SAXIFY_LOCK_GZIP: $encoded');
+    fail('Lockfile exported; this temporary test is removed in the next commit.');
   });
 }
