@@ -55,4 +55,4 @@ flutter test
 flutter build apk --release
 ```
 
-CI also builds a release app bundle. `test` currently runs as a non-blocking CI step; analyzer and build failures block the job and any release.
+CI also builds a release app bundle. Flutter analysis, all unit/widget tests, APK, and AAB builds are blocking steps; any failure prevents release publication.
