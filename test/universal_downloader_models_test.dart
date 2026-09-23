@@ -85,6 +85,19 @@ void main() {
     });
   });
 
+  test('open/share MIME follows the actual yt-dlp container', () {
+    final DownloadRecord record = DownloadRecord(
+      id: 'audio', url: 'https://youtu.be/abc', title: 'Mix',
+      platform: MediaPlatform.youtube, kind: DownloadKind.audio,
+      quality: 'Best', path: '/tmp/song.webm', createdAt: DateTime.utc(2026),
+    );
+    expect(record.mime, 'audio/webm');
+    record.path = '/tmp/video.mkv';
+    expect(record.mime, 'video/x-matroska');
+    record.path = '/tmp/audio.mp3';
+    expect(record.mime, 'audio/mpeg');
+  });
+
   test('persists the video-only download choice', () {
     final DownloadRecord record = DownloadRecord(
       id: 'dl_1',
