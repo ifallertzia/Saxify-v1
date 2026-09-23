@@ -32,7 +32,10 @@ class PlaybackService extends ChangeNotifier {
         _settings = settings,
         _library = library {
     _playerStateSub = _player.playerStateStream.listen(_onPlayerState);
-    _errorSub = _player.errorStream.listen(_handlePlaybackError);
+    // just_audio 0.9.x emits mid-stream errors through playbackEventStream.
+    // playerStateStream swallows those errors, and play() alone can miss them.
+    _errorSub = _player.playbackEventStream.listen(
+      (PlaybackEvent _) {}, onError: _handlePlaybackError);
     _positionSub = _player.positionStream.listen(_onPosition);
     _durationSub = _player.durationStream.listen((Duration? d) {
       _duration = d ?? Duration.zero;
@@ -49,7 +52,7 @@ class PlaybackService extends ChangeNotifier {
   StreamSubscription<PlayerState>? _playerStateSub;
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration?>? _durationSub;
-  StreamSubscription<PlayerException>? _errorSub;
+  StreamSubscription<PlaybackEvent>? _errorSub;
 
   // ------------------------------------------------------------------- state
   final List<Song> _queue = <Song>[];
@@ -517,7 +520,7 @@ class PlaybackService extends ChangeNotifier {
     final int startedFor = generation ?? _generation;
     try {
       // The play future catches only some errors; mid-stream ExoPlayer failures
-      // arrive on errorStream and are handled by the same guarded recovery.
+      // also arrive on playbackEventStream and use the same guarded recovery.
       unawaited(_player.play().catchError((Object error, StackTrace stack) {
         if (startedFor == _generation) _handlePlaybackError(error);
       }));
@@ -531,7 +534,7 @@ class PlaybackService extends ChangeNotifier {
     if (song == null || !_expectPlayback || _isLoading || _recoveringStream) return;
     final int generation = _generation;
     final Duration resumeAt = _player.position > _position ? _player.position : _position;
-    _recoveringStream = true; // errorStream and play().catchError can BOTH fire
+    _recoveringStream = true; // event stream and play().catchError can BOTH fire
     final int token = ++_recoveryToken;
     _isLoading = true;
     _notice = 'Connection interrupted — resuming from ${resumeAt.inSeconds}s…';

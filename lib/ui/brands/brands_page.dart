@@ -260,7 +260,7 @@ class _BrandChannelPageState extends State<BrandChannelPage> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
                 child: NeonButton(label: 'Play label tracks', icon: Icons.play_arrow_rounded,
-                  expand: true, onPressed: () => context.read<PlaybackService>().playQueue(songs)),
+                  expand: true, onPressed: () => context.read<PlaybackService>().playQueue(songs))),
               for (int i = 0; i < songs.length; i++)
                 SongTile(song: songs[i], onTap: () => context.read<PlaybackService>()
                     .playQueue(songs, startIndex: i)),

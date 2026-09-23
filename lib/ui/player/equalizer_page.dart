@@ -73,6 +73,7 @@ class _SoundControlsPanelState extends State<SoundControlsPanel> {
   Future<void> _applyPreset(String name) async {
     final EqualizerInfo? info = _info;
     if (info == null) return;
+    final int? session = context.read<PlaybackService>().player.androidAudioSessionId;
     if (!_enabled) {
       await NativeBridge.eqSetEnabled(true);
       if (mounted) setState(() => _enabled = true);
@@ -80,7 +81,6 @@ class _SoundControlsPanelState extends State<SoundControlsPanel> {
     final bool device = await NativeBridge.eqUsePreset(name);
     if (device) {
       // Native presets change ALL bands; refresh slider positions too.
-      final int? session = context.read<PlaybackService>().player.androidAudioSessionId;
       final EqualizerInfo? current = session == null ? null : await NativeBridge.eqInit(session);
       if (!mounted) return;
       setState(() {
@@ -183,23 +183,23 @@ class _SoundControlsPanelState extends State<SoundControlsPanel> {
           Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
             for (final String name in <String>[
               ..._custom,
-              ...info!.presets.where((String p) => !_custom.contains(p)),
+              ...info.presets.where((String p) => !_custom.contains(p)),
             ])
               ChoiceChip(label: Text(name), selected: _preset == name,
                 onSelected: (_) => _applyPreset(name)),
           ]),
           const SizedBox(height: 18),
-          for (int i = 0; i < info!.bands; i++)
+          for (int i = 0; i < info.bands; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 3),
               child: Row(children: <Widget>[
                 SizedBox(width: 62, child: Text(
-                  _freq(info!.centersMilliHz.length > i ? info.centersMilliHz[i] : 0, i),
+                  _freq(info.centersMilliHz.length > i ? info.centersMilliHz[i] : 0, i),
                   style: const TextStyle(fontSize: 11, color: SaxifyColors.textSecondary))),
                 Expanded(child: Slider(
-                  min: info!.minLevel.toDouble(), max: info.maxLevel.toDouble(),
+                  min: info.minLevel.toDouble(), max: info.maxLevel.toDouble(),
                   value: (_levels.length > i ? _levels[i] : 0)
-                      .clamp(info!.minLevel, info.maxLevel).toDouble(),
+                      .clamp(info.minLevel, info.maxLevel).toDouble(),
                   onChanged: _enabled ? (double value) {
                     final int level = value.round();
                     setState(() {
