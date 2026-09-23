@@ -85,13 +85,19 @@ jobs:
             printf '::error::%s\n' "${line//%/\%}"
           done
 
-      # Always keep the full build log as an artifact on failure
-      - name: Upload build log (failure)
+      # Keep every analyzer/test/build log available if a blocking step fails.
+      - name: Upload build diagnostics (failure)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log
-          path: build.log
+          name: build-diagnostics
+          path: |
+            analyze.log
+            test.log
+            build.log
+            appbundle.log
+            errors.log
+          if-no-files-found: warn
 
       # Post the tail of the failed build log as a PR comment (curl, no gh)
       - name: Post build failure log to PR
@@ -112,6 +118,13 @@ jobs:
             echo '```text'
             tail -60 build.log 2>/dev/null || echo "build.log missing"
             echo '```'
+            echo ''
+            echo '<details><summary>flutter analyze</summary>'
+            echo ''
+            echo '```text'
+            tail -80 analyze.log 2>/dev/null || echo "analyze.log missing"
+            echo '```'
+            echo '</details>'
             echo ''
             echo '<details><summary>flutter test</summary>'
             echo ''
