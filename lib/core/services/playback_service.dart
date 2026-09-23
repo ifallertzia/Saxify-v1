@@ -8,8 +8,6 @@ import 'package:just_audio/just_audio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 import 'notification_bootstrap.dart';
-import 'native_bridge.dart';
-import 'stream_quality.dart';
 
 import '../models/song.dart';
 import 'library_service.dart';
@@ -32,10 +30,6 @@ class PlaybackService extends ChangeNotifier {
         _settings = settings,
         _library = library {
     _playerStateSub = _player.playerStateStream.listen(_onPlayerState);
-    // just_audio 0.9.x emits mid-stream errors through playbackEventStream.
-    // playerStateStream swallows those errors, and play() alone can miss them.
-    _errorSub = _player.playbackEventStream.listen(
-      (PlaybackEvent _) {}, onError: _handlePlaybackError);
     _positionSub = _player.positionStream.listen(_onPosition);
     _durationSub = _player.durationStream.listen((Duration? d) {
       _duration = d ?? Duration.zero;
@@ -52,7 +46,6 @@ class PlaybackService extends ChangeNotifier {
   StreamSubscription<PlayerState>? _playerStateSub;
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration?>? _durationSub;
-  StreamSubscription<PlaybackEvent>? _errorSub;
 
   // ------------------------------------------------------------------- state
   final List<Song> _queue = <Song>[];
@@ -70,13 +63,6 @@ class PlaybackService extends ChangeNotifier {
   Timer? _sleepTicker;
   int _consecutiveFailures = 0;
   int _lastSavedSecond = -1;
-  int _generation = 0;
-  int _streamRetries = 0;
-  bool _recoveringStream = false;
-  int _recoveryToken = 0;
-  Duration? _recoveredAt;
-  bool _expectPlayback = false;
-  bool _completionHandled = false;
 
   /// Fired after a track really starts. Recommendations listen; playback does not wait.
   void Function(Song song)? onTrackStarted;
@@ -189,17 +175,13 @@ class PlaybackService extends ChangeNotifier {
     final Song? song = _current;
     if (song == null) return;
     if (_player.playing) {
-      _expectPlayback = false;
       await _player.pause();
     } else {
       _startPlayerPlayback(song);
     }
   }
 
-  Future<void> pause() {
-    _expectPlayback = false;
-    return _player.pause();
-  }
+  Future<void> pause() => _player.pause();
 
   Future<void> resume() async {
     final Song? song = _current;
@@ -312,7 +294,6 @@ class PlaybackService extends ChangeNotifier {
     _sleepTicker?.cancel();
     _sleepRemaining = duration;
     _sleepTimer = Timer(duration, () async {
-      _expectPlayback = false;
       await _player.pause();
       _sleepRemaining = null;
       _sleepTicker?.cancel();
@@ -364,7 +345,6 @@ class PlaybackService extends ChangeNotifier {
   ];
 
   Future<String> resolvePlayableStreamUrl(VideoId videoId) async {
-    final String quality = _settings.qualityForConnection(wifi: await NativeBridge.isOnWifi());
     Object? lastError;
 
     for (final (String name, YoutubeApiClient client) in _streamClients) {
@@ -373,10 +353,8 @@ class PlaybackService extends ChangeNotifier {
             .getManifest(videoId, ytClients: [client]);
 
         final StreamInfo? playable =
-            await _firstPlayable(preferStreamQuality(
-              _sortByBitrateDesc(manifest.audioOnly), quality)) ??
-                await _firstPlayable(preferStreamQuality(
-                  _sortByBitrateDesc(manifest.muxed), quality));
+            await _firstPlayable(_sortByBitrateDesc(manifest.audioOnly)) ??
+                await _firstPlayable(_sortByBitrateDesc(manifest.muxed));
 
         if (playable != null) {
           debugPrint('[$name] using itag ${playable.tag} '
@@ -435,33 +413,11 @@ class PlaybackService extends ChangeNotifier {
   }
 
   // ----------------------------------------------------------- queue control
-  AudioSource _sourceFor(Song song, String url) {
-    final Uri? art = Uri.tryParse(song.thumbnailUrl);
-    return AudioSource.uri(
-      Uri.parse(url),
-      tag: MediaItem(
-        id: song.id,
-        title: song.title,
-        artist: song.artist,
-        album: song.subtitle ?? 'Saxify',
-        artUri: art != null && art.hasScheme ? art : null,
-        duration: song.duration,
-      ),
-    );
-  }
-
   Future<void> _startSong(int index) async {
     if (index < 0 || index >= _queue.length) return;
-    final int generation = ++_generation;
-    _recoveringStream = false;
-    _recoveryToken++;
-    _recoveredAt = null;
-    _streamRetries = 0;
-    _completionHandled = false;
-    _expectPlayback = false;
+
     final Song song = _queue[index];
     await _flushPosition();
-    if (generation != _generation) return;
 
     _index = index;
     _current = song;
@@ -475,24 +431,42 @@ class PlaybackService extends ChangeNotifier {
       final String? local = _offlineSources[song.id];
       final String? cached = _prewarmed.remove(song.id);
       final String url = local ?? cached ?? await resolvePlayableStreamUrl(VideoId(song.id));
-      if (generation != _generation) return;
-      await _player.setAudioSource(_sourceFor(song, url));
-      if (generation != _generation) return;
+
+      // Same URI load setUrl used. The tag is only notification metadata.
+      final Uri? art = Uri.tryParse(song.thumbnailUrl);
+      await _player.setAudioSource(
+        AudioSource.uri(
+          Uri.parse(url),
+          tag: MediaItem(
+            id: song.id,
+            title: song.title,
+            artist: song.artist,
+            album: song.subtitle ?? 'Saxify',
+            artUri: art != null && art.hasScheme ? art : null,
+            duration: song.duration,
+          ),
+        ),
+      );
       await _player.setSpeed(_settings.playbackSpeed);
 
       final Duration? resume = _settings.resumePositionFor(song.id);
       if (resume != null && resume < (_player.duration ?? Duration.zero)) {
         await _player.seek(resume);
       }
-      if (generation != _generation) return;
-      // play() resolves on pause/end, not at the start of the track.
+
+      // AudioPlayer.play() completes only when the track ends or is paused.
+      // Awaiting it kept the mini-player spinner running for the whole song and
+      // left callers appearing stuck. Start it without blocking this method.
+      _startPlayerPlayback(song);
+
       _isLoading = false;
       _consecutiveFailures = 0;
       _notice = null;
-      _startPlayerPlayback(song, generation);
       notifyListeners();
 
       _prewarmNext();
+      // History updates the moment a track really starts. Kept out of the
+      // try-block above so a storage hiccup can never look like a stream error.
       try {
         await _library.recordPlay(song);
       } catch (e) {
@@ -504,9 +478,9 @@ class PlaybackService extends ChangeNotifier {
         debugPrint('onTrackStarted failed: $e');
       }
       NotificationBootstrap.requestOnFirstPlay();
-    } catch (error, stackTrace) {
-      if (generation != _generation) return;
-      debugPrint('Playback load failed: $error\n$stackTrace');
+    } catch (e, stackTrace) {
+      // ---- NO SILENT FAILURE, AND NO DEAD STOP ----
+      debugPrint('Playback error: $e\n$stackTrace');
       _isLoading = false;
       _consecutiveFailures++;
       _failedIds.add(song.id);
@@ -515,79 +489,20 @@ class PlaybackService extends ChangeNotifier {
     }
   }
 
-  void _startPlayerPlayback(Song song, [int? generation]) {
-    _expectPlayback = true;
-    final int startedFor = generation ?? _generation;
+  void _startPlayerPlayback(Song song) {
     try {
-      // The play future catches only some errors; mid-stream ExoPlayer failures
-      // also arrive on playbackEventStream and use the same guarded recovery.
-      unawaited(_player.play().catchError((Object error, StackTrace stack) {
-        if (startedFor == _generation) _handlePlaybackError(error);
-      }));
-    } catch (error) {
-      _handlePlaybackError(error);
-    }
-  }
-
-  void _handlePlaybackError(Object error) {
-    final Song? song = _current;
-    if (song == null || !_expectPlayback || _isLoading || _recoveringStream) return;
-    final int generation = _generation;
-    final Duration resumeAt = _player.position > _position ? _player.position : _position;
-    _recoveringStream = true; // event stream and play().catchError can BOTH fire
-    final int token = ++_recoveryToken;
-    _isLoading = true;
-    _notice = 'Connection interrupted — resuming from ${resumeAt.inSeconds}s…';
-    debugPrint('Playback stream interrupted: $error');
-    notifyListeners();
-    unawaited(_retryInterruptedSong(song, resumeAt, generation, token));
-  }
-
-  Future<void> _retryInterruptedSong(
-      Song song, Duration resumeAt, int generation, int token) async {
-    try {
-      // A new resolution avoids retrying the expired URL. Allow two attempts
-      // with a short backoff before advancing to a playable queue item.
-      while (_streamRetries < 2 && generation == _generation && _expectPlayback) {
-        _streamRetries++;
-        try {
-          final String url = _offlineSources[song.id] ??
-              await resolvePlayableStreamUrl(VideoId(song.id));
-          if (generation != _generation || !_expectPlayback) return;
-          await _player.setAudioSource(_sourceFor(song, url));
-          if (generation != _generation || !_expectPlayback) return;
-          final Duration length = _player.duration ?? song.duration ?? Duration.zero;
-          final Duration seek = length > const Duration(seconds: 1) && resumeAt >= length
-              ? length - const Duration(seconds: 1) : resumeAt;
-          await _player.seek(seek);
-          await _player.setSpeed(_settings.playbackSpeed);
-          if (generation != _generation || !_expectPlayback) return;
-          _isLoading = false;
-          _notice = null;
-          _recoveredAt = seek;
-          // The replacement play() may fail synchronously. Allow its error
-          // handler to start a second retry instead of swallowing the event.
-          _recoveringStream = false;
-          _startPlayerPlayback(song, generation);
-          notifyListeners();
-          return;
-        } catch (error) {
-          debugPrint('Stream re-resolve failed: $error');
-          if (_streamRetries < 2) await Future<void>.delayed(const Duration(seconds: 2));
-        }
-      }
-      if (generation == _generation && _expectPlayback) {
-        _isLoading = false;
+      unawaited(_player.play().catchError((Object error, StackTrace stackTrace) {
+        if (_current?.id != song.id || _isLoading) return;
+        debugPrint('Playback stream interrupted: $error\n$stackTrace');
+        _isLoading = true;
         _consecutiveFailures++;
         _failedIds.add(song.id);
-        await _recover(song);
-      }
-    } finally {
-      if (generation == _generation && token == _recoveryToken) {
-        _recoveringStream = false;
-        _isLoading = false;
+        _notice = 'Playback was interrupted — trying the next playable song.';
         notifyListeners();
-      }
+        unawaited(_recover(song));
+      }));
+    } catch (e, stackTrace) {
+      debugPrint('Could not start playback: $e\n$stackTrace');
     }
   }
 
@@ -628,15 +543,10 @@ class PlaybackService extends ChangeNotifier {
 
     if (playing != _isPlaying) {
       _isPlaying = playing;
-      NativeBridge.setPlaybackWakeLock(playing);
       notifyListeners();
     }
-    if (completed && _expectPlayback && !_isLoading &&
-        !_completionHandled && !_recoveringStream) {
-      _completionHandled = true;
-      _expectPlayback = false;
+    if (completed) {
       _isPlaying = false;
-      NativeBridge.setPlaybackWakeLock(false);
       notifyListeners();
       _onTrackCompleted();
     }
@@ -644,13 +554,6 @@ class PlaybackService extends ChangeNotifier {
 
   void _onPosition(Duration p) {
     _position = p;
-    // One interruption should not exhaust the retry budget for the entire
-    // song. Once the recovered stream actually advances, allow a later blip.
-    final Duration? recoveredAt = _recoveredAt;
-    if (recoveredAt != null && p > recoveredAt + const Duration(seconds: 3)) {
-      _streamRetries = 0;
-      _recoveredAt = null;
-    }
     // Persist a resume point every ~10 s instead of on every tick.
     final int second = p.inSeconds;
     if (second > 0 && second % 10 == 0 && second != _lastSavedSecond) {
@@ -671,9 +574,7 @@ class PlaybackService extends ChangeNotifier {
     await _flushPosition();
     if (_loopMode == LoopMode.one) {
       await _player.seek(Duration.zero);
-      _completionHandled = false;
-      final Song? song = _current;
-      if (song != null) _startPlayerPlayback(song);
+      await _player.play();
       return;
     }
     await _advance(manual: false);
@@ -701,7 +602,6 @@ class PlaybackService extends ChangeNotifier {
     }
 
     if (!manual && !_settings.autoplay) {
-      _expectPlayback = false;
       await _player.stop();
       return;
     }
@@ -791,8 +691,6 @@ class PlaybackService extends ChangeNotifier {
   void dispose() {
     _sleepTimer?.cancel();
     _sleepTicker?.cancel();
-    NativeBridge.setPlaybackWakeLock(false);
-    _errorSub?.cancel();
     _playerStateSub?.cancel();
     _positionSub?.cancel();
     _durationSub?.cancel();

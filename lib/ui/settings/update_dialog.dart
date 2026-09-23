@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/update_service.dart';
 import '../../core/theme/saxify_accents.dart';
@@ -109,7 +109,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text('Update available',
-                          style: SaxifyFonts.display(
+                          style: GoogleFonts.spaceGrotesk(
                               fontSize: 18, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 3),
                       Text(

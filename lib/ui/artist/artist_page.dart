@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
@@ -163,7 +163,7 @@ class _ArtistPageState extends State<ArtistPage> {
                                     data.channel.title,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: SaxifyFonts.display(
+                                    style: GoogleFonts.spaceGrotesk(
                                       fontSize: 25,
                                       fontWeight: FontWeight.w700,
                                       height: 1.1,
@@ -193,8 +193,7 @@ class _ArtistPageState extends State<ArtistPage> {
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
                   child: Row(
                     children: <Widget>[
-                      Expanded(
-                        child: NeonButton(
+                      NeonButton(
                         label: 'Play all',
                         icon: Icons.play_arrow_rounded,
                         expand: true,
@@ -202,7 +201,6 @@ class _ArtistPageState extends State<ArtistPage> {
                             ? null
                             : () =>
                                 playback.playQueue(data.uploads, startIndex: 0),
-                      ),
                       ),
                       const SizedBox(width: 10),
                       _IconButtonTile(

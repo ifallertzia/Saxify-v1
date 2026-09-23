@@ -1,7 +1,5 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
@@ -58,7 +56,7 @@ class SectionHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Text(title,
-                    style: SaxifyFonts.display(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 19,
                       fontWeight: FontWeight.w700,
                       color: SaxifyColors.textPrimary,
@@ -174,17 +172,15 @@ class NeonButton extends StatelessWidget {
           Icon(icon, size: compact ? 16 : 18, color: filled ? Colors.black : a.primary),
           const SizedBox(width: 8),
         ],
-        Flexible(child: Text(
+        Text(
           label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: compact ? 12.5 : 14,
             fontWeight: FontWeight.w700,
             color: filled ? Colors.black : a.primary,
             letterSpacing: 0.2,
           ),
-        )),
+        ),
       ],
     );
 
@@ -193,43 +189,32 @@ class NeonButton extends StatelessWidget {
     return SizedBox(
       width: expand ? double.infinity : null,
       height: height,
-      child: Opacity(
-        opacity: onPressed == null ? 0.45 : 1,
-        child: ClipRRect(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
           borderRadius: radius,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: onPressed,
-                borderRadius: radius,
-                child: Ink(
-                  decoration: BoxDecoration(
-                    borderRadius: radius,
-                    gradient: filled
-                        ? a.gradient
-                        : LinearGradient(
-                            colors: <Color>[
-                              Colors.white.withValues(alpha: 0.15),
-                              a.primary.withValues(alpha: 0.07),
-                            ],
-                            begin: Alignment.topLeft, end: Alignment.bottomRight,
-                          ),
-                    border: Border.all(color: filled
-                        ? Colors.white.withValues(alpha: 0.42)
-                        : Colors.white.withValues(alpha: 0.24)),
-                    boxShadow: filled ? <BoxShadow>[
-                      BoxShadow(color: a.primary.withValues(alpha: 0.27),
-                        blurRadius: 18, offset: const Offset(0, 8), spreadRadius: -6),
-                    ] : null,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 22),
-                    child: content,
-                  ),
-                ),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              gradient: filled ? a.gradient : null,
+              border: Border.all(
+                color: filled ? Colors.transparent : a.primary.withValues(alpha: 0.55),
               ),
+              boxShadow: filled
+                  ? <BoxShadow>[
+                      BoxShadow(
+                        color: a.primary.withValues(alpha: 0.35),
+                        blurRadius: 22,
+                        offset: const Offset(0, 8),
+                        spreadRadius: -8,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: compact ? 16 : 24),
+              child: content,
             ),
           ),
         ),
@@ -285,7 +270,7 @@ class EmptyState extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: SaxifyFonts.display(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: SaxifyColors.textPrimary,

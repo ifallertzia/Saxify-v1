@@ -6,8 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../core/services/native_bridge.dart';
 import '../../core/theme/saxify_theme.dart';
 
-/// Android 9 and below only: request permission for the optional public copy.
-/// An app-private offline song remains available if the user says no.
+/// English, short, and honest. Deny means stream-only — the app keeps going.
 class StoragePermission {
   const StoragePermission._();
 
@@ -27,8 +26,8 @@ class StoragePermission {
         title: const Text('Storage Permission Needed'),
         content: const Text(
           'To save songs to your Downloads folder, Saxify needs storage access.\n\n'
-          'If allowed, a copy also appears in Download/Saxify.\n'
-          'If denied, the song still saves inside Saxify for offline playback.',
+          'If you allow, songs save to /Download/Saxify/.\n'
+          'If you deny, you can still stream, but nothing is saved.',
         ),
         actions: <Widget>[
           TextButton(
@@ -45,12 +44,12 @@ class StoragePermission {
     if (!context.mounted) return false;
     if (allow != true) {
       _denied(context);
-      return true;
+      return false;
     }
     final PermissionStatus status = await Permission.storage.request();
     if (!status.isGranted) {
       if (context.mounted) _denied(context);
-      return true;
+      return false;
     }
     return true;
   }
@@ -58,7 +57,7 @@ class StoragePermission {
   static void _denied(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Public copy unavailable; your offline song stays in Saxify.'),
+        content: Text('Storage denied. You can still stream. Nothing will be saved.'),
         backgroundColor: SaxifyColors.cardHover,
       ),
     );

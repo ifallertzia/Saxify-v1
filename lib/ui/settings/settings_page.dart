@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -13,8 +13,6 @@ import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/utils/format.dart';
-import '../../core/utils/support_email.dart';
-import '../../core/services/native_bridge.dart';
 import '../widgets/neon.dart';
 import '../widgets/saxify_logo.dart';
 import '../downloads/music_downloads_page.dart';
@@ -40,7 +38,7 @@ class SettingsPage extends StatelessWidget {
           SliverAppBar(
             pinned: true,
             title: Text('Settings',
-                style: SaxifyFonts.display(fontWeight: FontWeight.w700)),
+                style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
             backgroundColor: SaxifyColors.background,
           ),
           SliverPadding(
@@ -106,18 +104,20 @@ class SettingsPage extends StatelessWidget {
                 _SettingTile(
                   icon: Icons.download_outlined,
                   title: 'Music downloads',
-                  subtitle: 'Play and manage your offline songs',
+                  subtitle: 'Files in Download/Saxify, with delete',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(builder: (_) => const MusicDownloadsPage()),
                   ),
                 ),
                 _SettingTile(
                   icon: Icons.monitor_heart_outlined,
-                  title: 'Download status',
-                  subtitle: 'Check if on-device downloads are ready',
+                  title: 'Downloader diagnostics',
+                  subtitle: 'Backend health, version, boot log',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const DiagnosticsPage(),
+                      builder: (_) => DiagnosticsPage(
+                        safeMode: context.read<bool>(),
+                      ),
                     ),
                   ),
                 ),
@@ -137,7 +137,7 @@ class SettingsPage extends StatelessWidget {
                 _ChoiceTile(
                   icon: Icons.wifi_rounded,
                   title: 'Streaming quality · Wi-Fi',
-                  subtitle: 'Selects the stream bitrate when on Wi-Fi',
+                  subtitle: 'Quality badge shown in the player',
                   choices: const <String>['low', 'medium', 'high'],
                   value: settings.qualityWifi,
                   onChanged: settings.setQualityWifi,
@@ -145,7 +145,7 @@ class SettingsPage extends StatelessWidget {
                 _ChoiceTile(
                   icon: Icons.network_cell_rounded,
                   title: 'Streaming quality · Mobile data',
-                  subtitle: 'Selects the stream bitrate on mobile data',
+                  subtitle: 'Save bandwidth on the go',
                   choices: const <String>['low', 'medium', 'high'],
                   value: settings.qualityMobile,
                   onChanged: settings.setQualityMobile,
@@ -268,7 +268,7 @@ class SettingsPage extends StatelessWidget {
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
         title: Text(title,
-            style: SaxifyFonts.display(fontWeight: FontWeight.w700)),
+            style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -358,7 +358,7 @@ Future<void> _showReportDialog(BuildContext context) async {
       builder: (BuildContext dialog) => StatefulBuilder(
         builder: (BuildContext dialog, StateSetter setDialogState) => AlertDialog(
           title: Text('Contact / Report',
-              style: SaxifyFonts.display(fontWeight: FontWeight.w700)),
+              style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -441,21 +441,35 @@ Future<void> _launchSupportEmail(
   String category,
   String details,
 ) async {
-  final SupportEmail draft = SupportEmail(
-    to: SaxifyBranding.contactEmail, category: category, details: details,
+  final String subject = 'Saxify feedback: $category';
+  final String body = <String>[
+    'Hi Saxify team,',
+    '',
+    'Topic: $category',
+    '',
+    details.trim().isEmpty ? 'Please describe the issue or suggestion here.' : details.trim(),
+    '',
+    'Phone model / Android version (optional):',
+  ].join('\n');
+  final Uri mailto = Uri(
+    scheme: 'mailto',
+    path: SaxifyBranding.contactEmail,
+    queryParameters: <String, String>{'subject': subject, 'body': body},
   );
-  // ACTION_SENDTO passes real spaces/newlines as extras to Gmail on Android.
-  bool opened = await NativeBridge.openSupportEmail(
-    to: draft.to, subject: draft.subject, body: draft.body,
-  );
+  bool opened = false;
+  try {
+    opened = await launchUrl(mailto, mode: LaunchMode.externalApplication);
+  } catch (_) {}
   if (!opened) {
+    final Uri gmail = Uri.https('mail.google.com', '/mail/', <String, String>{
+      'view': 'cm',
+      'fs': '1',
+      'to': SaxifyBranding.contactEmail,
+      'su': subject,
+      'body': body,
+    });
     try {
-      opened = await launchUrl(draft.mailto, mode: LaunchMode.externalApplication);
-    } catch (_) {}
-  }
-  if (!opened) {
-    try {
-      opened = await launchUrl(draft.gmailWeb, mode: LaunchMode.externalApplication);
+      opened = await launchUrl(gmail, mode: LaunchMode.externalApplication);
     } catch (_) {}
   }
   if (!context.mounted) return;
@@ -511,7 +525,7 @@ class _ThemePanelState extends State<_ThemePanel> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text('Accent colour',
-                        style: SaxifyFonts.display(
+                        style: GoogleFonts.spaceGrotesk(
                             fontSize: 14.5, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 2),
                     const Text(
@@ -676,7 +690,7 @@ class _AboutCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     GradientText(SaxifyBranding.appName,
-                        style: SaxifyFonts.display(
+                        style: GoogleFonts.spaceGrotesk(
                             fontSize: 18, fontWeight: FontWeight.w700)),
                     const Text('Stream beyond limits',
                         style: TextStyle(
@@ -798,7 +812,7 @@ class _PanelHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(title,
-              style: SaxifyFonts.display(
+              style: GoogleFonts.spaceGrotesk(
                   fontSize: 17, fontWeight: FontWeight.w700)),
           const SizedBox(height: 3),
           Text(subtitle,

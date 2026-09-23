@@ -131,9 +131,9 @@ class _SaxifyShellState extends State<SaxifyShell> {
                 label: 'Library',
               ),
               NavigationDestination(
-                icon: Icon(Icons.workspace_premium_outlined),
-                selectedIcon: Icon(Icons.workspace_premium_rounded),
-                label: 'Exclusive',
+                icon: Icon(Icons.download_outlined),
+                selectedIcon: Icon(Icons.download_rounded),
+                label: 'Save',
               ),
               NavigationDestination(
                 icon: Icon(Icons.settings_outlined),

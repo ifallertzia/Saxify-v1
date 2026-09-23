@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
-import '../../config/release_notes.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/album_card.dart';
@@ -21,7 +20,6 @@ import '../brands/brands_page.dart';
 import '../settings/settings_page.dart';
 import '../shell/shell_controller.dart';
 import '../widgets/media_cards.dart';
-import '../../core/theme/category_palette.dart';
 import '../widgets/neon.dart';
 import '../widgets/saxify_logo.dart';
 import '../widgets/song_tile.dart';
@@ -74,47 +72,6 @@ class _HomePageState extends State<HomePage> {
             );
           }),
           _Hero(name: settings.displayName),
-            // ------------------------------------------------ Mood & genres
-            const SectionHeader(
-              title: 'Mood & genres',
-              subtitle: 'Tap a vibe to start a station',
-            ),
-            const _MoodGenresRow(),
-
-            // ------------------------------------------------ Top artists
-            SectionHeader(
-              title: 'Music brands',
-              subtitle: 'Official label channels',
-              actionLabel: 'All',
-              onAction: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const BrandsPage()),
-              ),
-            ),
-            const _BrandRow(),
-            SectionHeader(
-              title: 'Top artists',
-              subtitle: 'Commanding the charts right now',
-              actionLabel: 'Library',
-              onAction: () => context.read<ShellController>().goLibrary(),
-            ),
-            HorizontalRail(
-              height: 168,
-              itemCount: HomeCatalog.topArtists.length,
-              builder: (BuildContext c, int i) {
-                final ArtistRef artist = HomeCatalog.topArtists[i];
-                return ArtistBubble(
-                  name: artist.name,
-                  imageUrl: artist.imageUrl,
-                  onTap: () => openArtistByName(
-                        context,
-                        name: artist.name,
-                        channelId: artist.channelId,
-                      ),
-                );
-              },
-            ),
-
-
           if (catalog.loading) ...<Widget>[
             const SectionHeader(title: 'Made for you'),
             const LoadingRail(itemCount: 3),
@@ -152,6 +109,13 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
             ],
+
+            // ------------------------------------------------ Mood & genres
+            const SectionHeader(
+              title: 'Mood & genres',
+              subtitle: 'Tap a vibe to start a station',
+            ),
+            const _MoodGenresRow(),
 
             // ------------------------------------------------ Trending now
             if (catalog.trending.isNotEmpty) ...<Widget>[
@@ -199,6 +163,39 @@ class _HomePageState extends State<HomePage> {
                   title: album.title,
                   artist: album.artist,
                   onTap: () => _openAlbum(album),
+                );
+              },
+            ),
+
+            // ------------------------------------------------ Top artists
+            SectionHeader(
+              title: 'Music brands',
+              subtitle: 'Official label channels',
+              actionLabel: 'All',
+              onAction: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const BrandsPage()),
+              ),
+            ),
+            const _BrandRow(),
+            SectionHeader(
+              title: 'Top artists',
+              subtitle: 'Commanding the charts right now',
+              actionLabel: 'Library',
+              onAction: () => context.read<ShellController>().goLibrary(),
+            ),
+            HorizontalRail(
+              height: 168,
+              itemCount: HomeCatalog.topArtists.length,
+              builder: (BuildContext c, int i) {
+                final ArtistRef artist = HomeCatalog.topArtists[i];
+                return ArtistBubble(
+                  name: artist.name,
+                  imageUrl: artist.imageUrl,
+                  onTap: () => openArtistByName(
+                        context,
+                        name: artist.name,
+                        channelId: artist.channelId,
+                      ),
                 );
               },
             ),
@@ -330,7 +327,7 @@ class _Hero extends StatelessWidget {
             const SizedBox(height: 14),
             RichText(
               text: TextSpan(
-                style: SaxifyFonts.display(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 25,
                   height: 1.18,
                   fontWeight: FontWeight.w700,
@@ -472,11 +469,8 @@ class _BrandRow extends StatelessWidget {
         separatorBuilder: (BuildContext context, int index) => const SizedBox(width: 8),
         itemBuilder: (BuildContext context, int i) {
           final brand = MusicBrands.all[i];
-          final Color tile = CategoryPalette.at(i);
           return ActionChip(
-            backgroundColor: tile,
-            side: BorderSide.none,
-            label: Text(brand.name, style: TextStyle(color: CategoryPalette.on(tile), fontWeight: FontWeight.w700)),
+            label: Text(brand.name),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => BrandChannelPage(brand: brand)),
             ),
@@ -490,7 +484,18 @@ class _BrandRow extends StatelessWidget {
 class _WhatsNewCard extends StatelessWidget {
   const _WhatsNewCard();
 
-  static final Future<List<String>> _notes = ReleaseNotes.load();
+  static const List<String> _notes = <String>[
+    'Home shelves now load automatically when the app opens; no pull-to-refresh needed.',
+    'Search, moods and trending stations now prefer Hindi/Indian songs and filter out non-music videos.',
+    'Mood & genre stations now include Bollywood, devotional, workout, Osho meditation, regional hits and more.',
+    'Song rows now have a working download button with live progress and an offline Your Downloads library.',
+    'Eligible public YouTube links can now be sent to the configured Saxify Downloader backend; video-only, video + audio and audio choices are available.',
+    'Artist pages fall back to Hindi-first music results when a channel has no usable upload feed.',
+    'The mini-player stops showing a spinner once playback actually starts; background playback recovery is improved.',
+    'Your name is requested on first launch, and local library JSON backup/import is now easier to find.',
+    'Local JSON backups are distinct from server-backed playlist codes; cloud restore requires the matching Render routes.',
+    'Settings contact/report now opens a prefilled email draft with useful report categories and examples.'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -528,7 +533,7 @@ class _WhatsNewCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     "What's new in Saxify",
-                    style: SaxifyFonts.display(
+                    style: GoogleFonts.spaceGrotesk(
                         fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 2),
@@ -553,37 +558,32 @@ class _WhatsNewCard extends StatelessWidget {
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
         title: Text('Saxify 2.1.0',
-            style: SaxifyFonts.display(fontWeight: FontWeight.w700)),
+            style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
         content: SizedBox(
           width: double.maxFinite,
-          child: FutureBuilder<List<String>>(
-            future: _notes,
-            builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const SizedBox(height: 56, child: Center(child: CircularProgressIndicator()));
-              }
-              final List<String> notes = snapshot.data ?? <String>[];
-              if (notes.isEmpty) return const Text('Release notes are unavailable.');
-              return ListView(
-                shrinkWrap: true,
-                children: <Widget>[
-                  for (final String note in notes)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Icon(Icons.check_circle_rounded,
-                              size: 15, color: context.accent.primary),
-                          const SizedBox(width: 9),
-                          Expanded(child: Text(note,
-                            style: const TextStyle(fontSize: 12.5, height: 1.45))),
-                        ],
+          child: ListView(
+            shrinkWrap: true,
+            children: <Widget>[
+              for (final String note in _notes)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Icon(Icons.check_circle_rounded,
+                          size: 15, color: context.accent.primary),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          note,
+                          style: const TextStyle(
+                              fontSize: 12.5, height: 1.45),
+                        ),
                       ),
-                    ),
-                ],
-              );
-            },
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
         actions: <Widget>[

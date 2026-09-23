@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/services/artist_service.dart';
-import '../../core/theme/category_palette.dart';
-import '../../core/theme/saxify_fonts.dart';
 import '../../core/models/song.dart';
 import '../../core/services/playback_service.dart';
 import '../../core/theme/saxify_accents.dart';
@@ -186,7 +184,7 @@ class AlbumTile extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: SaxifyFonts.display(
+                style: GoogleFonts.spaceGrotesk(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                     color: SaxifyColors.textPrimary),
@@ -207,73 +205,7 @@ class AlbumTile extends StatelessWidget {
   }
 }
 
-/// Fetches a real portrait on the rail itself, not only on the artist page.
-/// Placeholder appears only until we know an image cannot be resolved.
-class ArtistPortrait extends StatefulWidget {
-  const ArtistPortrait({super.key, required this.name, this.imageUrl = '', this.size = 86});
-
-  final String name;
-  final String imageUrl;
-  final double size;
-
-  @override
-  State<ArtistPortrait> createState() => _ArtistPortraitState();
-}
-
-class _ArtistPortraitState extends State<ArtistPortrait> {
-  Future<ArtistProfile>? _photo;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (widget.imageUrl.isEmpty) {
-      _photo ??= context.read<ArtistService>().resolve(widget.name);
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant ArtistPortrait oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.name != widget.name || oldWidget.imageUrl != widget.imageUrl) {
-      _photo = widget.imageUrl.isEmpty
-          ? context.read<ArtistService>().resolve(widget.name) : null;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<ArtistProfile>(
-      future: _photo,
-      builder: (BuildContext context, AsyncSnapshot<ArtistProfile> snap) {
-        final String url = widget.imageUrl.isNotEmpty
-            ? widget.imageUrl : snap.data?.imageUrl ?? '';
-        if (url.isEmpty && snap.connectionState != ConnectionState.done) {
-          return Container(
-            width: widget.size,
-            height: widget.size,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: SaxifyColors.cardHover,
-              shape: BoxShape.circle,
-              border: Border.all(color: context.accent.primary.withValues(alpha: 0.18)),
-            ),
-            child: Icon(Icons.person_rounded, color: context.accent.primary, size: widget.size * 0.4),
-          );
-        }
-        return ClipOval(
-          child: Artwork(
-            url: url,
-            size: widget.size,
-            radius: widget.size / 2,
-            fallbackIcon: Icons.person_rounded,
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// Circular artist bubble — the Top artists and label artist rails.
+/// Circular artist bubble — the "Top artists" rail.
 class ArtistBubble extends StatelessWidget {
   const ArtistBubble({
     super.key,
@@ -316,7 +248,14 @@ class ArtistBubble extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: ArtistPortrait(name: name, imageUrl: imageUrl, size: size - 18),
+                child: ClipOval(
+                  child: Artwork(
+                    url: imageUrl,
+                    size: size - 18,
+                    radius: (size - 18) / 2,
+                    fallbackIcon: Icons.person_rounded,
+                  ),
+                ),
               ),
               const SizedBox(height: 10),
               Padding(
@@ -332,7 +271,11 @@ class ArtistBubble extends StatelessWidget {
                       color: SaxifyColors.textPrimary),
                 ),
               ),
-              Text(caption, style: const TextStyle(fontSize: 10.5, color: SaxifyColors.textFaint)),
+              Text(
+                caption,
+                style:
+                    const TextStyle(fontSize: 10.5, color: SaxifyColors.textFaint),
+              ),
             ],
           ),
         ),
@@ -381,6 +324,7 @@ class MoodGenreGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final SaxifyAccent accent = context.accent;
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final int columns = constraints.maxWidth >= 760
@@ -402,10 +346,8 @@ class MoodGenreGrid extends StatelessWidget {
           itemBuilder: (BuildContext context, int index) {
             final (String, String) item = items[index];
             final BorderRadius radius = BorderRadius.circular(14);
-            final Color tile = CategoryPalette.at(index);
-            final Color foreground = CategoryPalette.on(tile);
             return Material(
-              color: tile,
+              color: accent.primary,
               borderRadius: radius,
               child: InkWell(
                 onTap: () => onSelected(item.$2),
@@ -415,28 +357,28 @@ class MoodGenreGrid extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: radius,
                     border: Border.all(
-                      color: foreground.withValues(alpha: 0.20),
+                      color: accent.secondary.withValues(alpha: 0.65),
                       width: 1.2,
                     ),
                   ),
                   child: Row(
                     children: <Widget>[
-                      Icon(_icons[index % _icons.length], size: 18, color: foreground),
+                      Icon(_icons[index % _icons.length], size: 18, color: Colors.black),
                       const SizedBox(width: 9),
                       Expanded(
                         child: Text(
                           item.$1,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: foreground,
+                          style: const TextStyle(
+                            color: Colors.black,
                             fontSize: 12.5,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Icon(Icons.arrow_outward_rounded, size: 15, color: foreground.withValues(alpha: 0.75)),
+                      const Icon(Icons.arrow_outward_rounded, size: 15, color: Colors.black54),
                     ],
                   ),
                 ),
@@ -464,10 +406,9 @@ class MoodChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color tile = CategoryPalette.forKey(label);
-    final Color foreground = CategoryPalette.on(tile);
+    final SaxifyAccent accent = context.accent;
     return Material(
-      color: tile,
+      color: accent.primary,
       borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
       child: InkWell(
         onTap: onTap,
@@ -478,10 +419,17 @@ class MoodChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               if (icon != null) ...<Widget>[
-                Icon(icon, size: 15, color: foreground),
+                Icon(icon, size: 15, color: Colors.black),
                 const SizedBox(width: 7),
               ],
-              Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: foreground)),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                ),
+              ),
             ],
           ),
         ),

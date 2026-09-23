@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/song.dart';
@@ -98,7 +98,7 @@ class _SongSheet extends StatelessWidget {
                           song.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: SaxifyFonts.display(
+                          style: GoogleFonts.spaceGrotesk(
                               fontSize: 15, fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 3),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
@@ -99,7 +99,7 @@ class _BackgroundGuideSheet extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 'Instructions to play in background',
-                style: SaxifyFonts.display(
+                style: GoogleFonts.spaceGrotesk(
                     fontSize: 19, fontWeight: FontWeight.w700, height: 1.2),
               ),
               const SizedBox(height: 6),
