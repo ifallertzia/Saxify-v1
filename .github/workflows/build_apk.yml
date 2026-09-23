@@ -42,12 +42,11 @@ jobs:
         shell: bash
         run: set -o pipefail && flutter analyze --no-fatal-infos 2>&1 | tee analyze.log
 
-      # The repo has 3 suites; CI used to skip them entirely. Non-blocking for
-      # now so a flaky test never hides a real build break again.
+      # Keep every unit/widget suite in the release gate so a failing test
+      # cannot be hidden behind a successful APK build.
       - name: Test (unit + widget)
         shell: bash
         run: set -o pipefail && flutter test 2>&1 | tee test.log
-        continue-on-error: true
 
       - name: Build APK (release)
         shell: bash
