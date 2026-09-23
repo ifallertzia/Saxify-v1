@@ -370,7 +370,7 @@ Future<void> _showReportDialog(BuildContext context) async {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: category,
+                  initialValue: category,
                   decoration: const InputDecoration(labelText: 'What is this about?'),
                   items: <DropdownMenuItem<String>>[
                     for (final String item in categories)

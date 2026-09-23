@@ -57,6 +57,7 @@ class _DownloaderPageState extends State<DownloaderPage> {
 
   Future<void> _paste() async {
     final ClipboardData? data = await Clipboard.getData('text/plain');
+    if (!mounted) return;
     final String text = data?.text?.trim() ?? '';
     if (text.isEmpty) return;
     if (_bulkMode) {
