@@ -4,7 +4,7 @@ import 'package:saxify/downloader/platform_detect.dart';
 
 void main() {
   group('universal downloader public URL policy', () {
-    test('eligible public YouTube links are allowed through to the backend', () {
+    test('eligible public YouTube links are allowed through to local yt-dlp', () {
       expect(
         PlatformDetect.detect('https://www.youtube.com/watch?v=abc').name,
         'youtube',
@@ -37,7 +37,7 @@ void main() {
     });
   });
 
-  group('backend format metadata', () {
+  group('yt-dlp format metadata', () {
     test('identifies video-only, combined, and audio formats', () {
       final MediaFormat videoOnly = MediaFormat.fromJson(<String, dynamic>{
         'format_id': '137',
@@ -68,7 +68,7 @@ void main() {
       expect(audio.hasAudio, isTrue);
     });
 
-    test('recognizes server type fields when codec metadata is omitted', () {
+    test('recognizes type fields when codec metadata is omitted', () {
       final MediaFormat videoOnly = MediaFormat.fromJson(<String, dynamic>{
         'format_id': 'v1',
         'kind': 'video_only',

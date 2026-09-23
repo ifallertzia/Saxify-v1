@@ -2,17 +2,16 @@
 
 ## What’s new
 
-- Home shelves load on launch, with Hindi- and Indian-music-first recommendations, charts, moods and search.
-- Explore now includes devotional, workout, regional and Osho music categories; search results are filtered toward music.
-- Trending “Show all” and “Play today’s mix” use the same automatically loaded catalog.
-- Improved player loading recovery while keeping Saxify’s existing playback engine; artist pages have more resilient song fallbacks and background playback initialization is retained.
-- Download controls show progress on songs. Completed tracks can be played offline and appear under Library → Downloads.
-- Universal Downloader now accepts eligible public YouTube URLs and offers best-quality, video-only, video + audio, and audio downloads. Private, login-gated and paywalled content remains unsupported.
-- Library JSON backup/import is easier to find and can paste from the clipboard. Cloud playlist-code restore remains a separate server-backed feature.
-- First launch asks for a display name; Settings no longer exposes an editable email address. Contact/Report opens a prefilled email draft with report examples.
-- Small-screen spacing, Settings cards and accent contrast have been improved.
+- Android song downloads and public YouTube links now run entirely on your phone with yt-dlp and FFmpeg, not a downloader server. Live progress, bulk links, MP3 audio, video-only and video-with-audio quality choices are available.
+- Saved songs appear in Your Downloads and play offline. A public Downloads copy is also attempted when Android allows it.
+- Background playback now retries an interrupted stream at your last position. The foreground media notification and playback wake lock stay active while music is playing.
+- Hindi-first home shelves load automatically; Top artists show real portraits where available, including Darshan Raval. Search recognizes Osho sessions and longer music mixes.
+- Browse categories and Music Brands use distinct vivid colors; labels now lead to category-specific artists and playable tracks.
+- The player Sound button opens a liquid-glass volume and equalizer panel with device bands and presets.
+- Inter is bundled for offline typography; buttons, spacing and large-text layouts are polished. Appearance offers vivid new accents including Silver, and the bottom tab is now called Exclusive.
+- Report/Contact drafts preserve normal spaces in Gmail. Wi-Fi and mobile streaming-quality choices affect playback; Sony Music India points to its correct channel.
+- Startup and download status are simpler. Existing playlists and local JSON backup stay intact.
 
 ## Notes
 
-- YouTube universal-download support depends on the deployed Render downloader implementing the required `video`, `video_only` and `audio` modes. See the backend contract in `README.md`; the app does not bypass private or login protections.
-- This APK is attached automatically only after the complete `main` build succeeds. The in-app updater reads the latest release from `ifallertzia/Saxify-v1`.
+New downloads still need an internet connection to the media source. Airplane mode is for playing files saved earlier. Private, paid, and login-gated sources are unsupported. The bundled Android downloader includes GPL-3.0 components; review licensing when distributing APKs. The in-app updater reads releases from `ifallertzia/Saxify-v1`.

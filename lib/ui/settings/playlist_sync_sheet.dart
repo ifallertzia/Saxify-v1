@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/saxify_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/playlist.dart';
@@ -15,7 +15,7 @@ Future<void> sharePlaylistCode(BuildContext context, Playlist playlist) async {
   final String? title = await showDialog<String>(
     context: context,
     builder: (BuildContext dialog) => AlertDialog(
-      title: Text('Generate code', style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+      title: Text('Generate code', style: SaxifyFonts.display(fontWeight: FontWeight.w700)),
       content: TextField(
         controller: name,
         autofocus: true,
@@ -48,7 +48,7 @@ Future<void> shareAllPlaylistCodes(BuildContext context) async {
   final String? title = await showDialog<String>(
     context: context,
     builder: (BuildContext dialog) => AlertDialog(
-      title: Text('Generate all', style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+      title: Text('Generate all', style: SaxifyFonts.display(fontWeight: FontWeight.w700)),
       content: TextField(controller: name, decoration: const InputDecoration(hintText: 'Backup name')),
       actions: <Widget>[
         TextButton(onPressed: () => Navigator.pop(dialog), child: const Text('Cancel')),
@@ -88,7 +88,7 @@ Future<void> showImportCodeSheet(BuildContext context) async {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text('Import playlist code', style: GoogleFonts.spaceGrotesk(fontSize: 18, fontWeight: FontWeight.w700)),
+            Text('Import playlist code', style: SaxifyFonts.display(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             const Text(
               'Cloud playlist codes are separate from local library JSON. Full-library restore needs the Render route GET /playlist/all/:code; a single-playlist code uses GET /playlist/:code. Generating codes needs POST /playlist and POST /playlist/all.',

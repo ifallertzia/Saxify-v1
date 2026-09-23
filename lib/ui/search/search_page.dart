@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/saxify_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/album_card.dart';
@@ -11,6 +11,7 @@ import '../../core/services/recommendation_service.dart';
 import '../../core/services/youtube_service.dart';
 import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
+import '../../core/theme/category_palette.dart';
 import '../../data/labels.dart';
 import '../album/album_page.dart';
 import '../artist/artist_router.dart';
@@ -254,7 +255,7 @@ class _SearchPageState extends State<SearchPage> {
                                         '${_results.length} results for "$_activeQuery"',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.spaceGrotesk(
+                                        style: SaxifyFonts.display(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
                                           color: SaxifyColors.textSecondary,
@@ -415,8 +416,11 @@ class _ExploreMusic extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (BuildContext context, int i) {
               final brand = MusicBrands.all[i];
+              final Color tile = CategoryPalette.at(i);
               return ActionChip(
-                label: Text(brand.name),
+                backgroundColor: tile,
+                side: BorderSide.none,
+                label: Text(brand.name, style: TextStyle(color: CategoryPalette.on(tile), fontWeight: FontWeight.w700)),
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(builder: (_) => BrandChannelPage(brand: brand)),
                 ),

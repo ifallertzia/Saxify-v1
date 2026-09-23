@@ -156,6 +156,20 @@ class DownloadRecord {
   int size;
   String? path;
   String? uri;
+  /// Use the real container, not the requested format (which yt-dlp may
+  /// negotiate to WebM/MKV if MP4 is unavailable).
+  String get mime {
+    final String ext = (path ?? '').split('.').last.toLowerCase();
+    return switch (ext) {
+      'mp3' => 'audio/mpeg',
+      'm4a' => 'audio/mp4',
+      'webm' => kind == DownloadKind.audio ? 'audio/webm' : 'video/webm',
+      'mkv' => 'video/x-matroska',
+      'opus' => 'audio/ogg',
+      _ => kind == DownloadKind.audio ? 'audio/mp4' : 'video/mp4',
+    };
+  }
+
   JobStatus status;
   String? error;
 
@@ -230,10 +244,10 @@ String classifyDownloadError(Object error, {int? status, String body = ''}) {
     return 'This link is not supported.';
   }
   if (blob.contains('timeout') || blob.contains('timed out')) {
-    return 'The server took too long. It may be waking up — try again.';
+    return 'The media host took too long. Try again.';
   }
   if (status != null && status >= 500) {
-    return 'The download server had a problem. Try again in a moment.';
+    return 'The media host returned an error. Try again in a moment.';
   }
   if (blob.contains('socket') || blob.contains('network') || blob.contains('failed host')) {
     return 'Network error. Check your connection and try again.';

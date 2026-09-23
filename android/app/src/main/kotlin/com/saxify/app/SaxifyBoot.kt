@@ -35,7 +35,4 @@ object SaxifyBoot {
             .apply()
     }
 
-    fun reset(context: Context) {
-        markSuccess(context)
-    }
 }

@@ -19,7 +19,6 @@ dependencies:
   # --- Frontend only ---
   provider: ^6.1.2
   shared_preferences: ^2.3.2
-  google_fonts: ^6.2.1
   cached_network_image: ^3.4.1
   url_launcher: ^6.3.1
 
@@ -43,3 +42,8 @@ flutter:
   assets:
     - assets/images/saxify_logo.png
     - assets/images/saxify_splash.png
+    - RELEASE_NOTES.md
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf

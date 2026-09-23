@@ -45,7 +45,7 @@ Future<void> main() async {
   runZonedGuarded(() async {
     AppBoot? boot;
     try {
-      boot = await _initializeApp().timeout(const Duration(seconds: 5));
+      boot = await _initializeApp().timeout(const Duration(seconds: 12));
     } catch (error, stack) {
       BootLog.write('init failed: $error\n$stack');
     }
@@ -79,7 +79,7 @@ Future<AppBoot> _initializeApp() async {
   // the app is backgrounded. Its failure is isolated internally, so still try
   // it in safe mode rather than silently dropping background playback.
   await NotificationBootstrap.init().timeout(
-    const Duration(seconds: 3),
+    const Duration(seconds: 7),
     onTimeout: () => false,
   );
 
@@ -97,7 +97,6 @@ Future<AppBoot> _initializeApp() async {
   final UniversalDownloader downloader = UniversalDownloader(
     history: DownloadHistoryStore(prefs),
   );
-  downloader.api.baseUrl = settings.downloaderBaseUrl;
 
   playback.onTrackStarted = (Song song) {
     recommendations.notePlay(song);
@@ -247,7 +246,7 @@ class _SaxifyAppState extends State<SaxifyApp> {
           create: (_) => ThemeController(boot.settings),
         ),
         ChangeNotifierProvider<HomeCatalog>(
-          create: (_) => HomeCatalog(youtube: boot.youtube, library: boot.library),
+          create: (_) => HomeCatalog(youtube: boot.youtube, library: boot.library)..load(),
         ),
         ChangeNotifierProvider<ShellController>(
           create: (_) => ShellController(),
@@ -257,10 +256,7 @@ class _SaxifyAppState extends State<SaxifyApp> {
         value: boot.youtube,
         child: Provider<ArtistService>.value(
           value: boot.artists,
-          child: Provider<bool>.value(
-            value: boot.safeMode,
-            child: const _SaxifyRoot(),
-          ),
+          child: const _SaxifyRoot(),
         ),
       ),
     );
@@ -292,6 +288,15 @@ class _SaxifyRoot extends StatelessWidget {
       themeMode: ThemeMode.dark,
       theme: SaxifyTheme.build(theme.accent),
       darkTheme: SaxifyTheme.build(theme.accent),
+      builder: (BuildContext context, Widget? child) {
+        final MediaQueryData media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(
+            textScaler: media.textScaler.clamp(minScaleFactor: 1.0, maxScaleFactor: 1.25),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: const SaxifyProfileGate(),
     );
   }
@@ -322,22 +327,21 @@ class SaxifyRecoveryApp extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Local data reset — playlists cloud se restore honge.',
+                  'Your library is still on this device. Try again to continue.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
                 FilledButton(
                   onPressed: () async {
-                    await NativeBridge.clearLocalPrefs();
                     try {
                       final AppBoot boot =
-                          await _initializeApp().timeout(const Duration(seconds: 5));
+                          await _initializeApp().timeout(const Duration(seconds: 12));
                       runApp(SaxifyApp(boot: boot));
                     } catch (error) {
                       BootLog.write('retry failed: $error');
                     }
                   },
-                  child: const Text('Reset local data and retry'),
+                  child: const Text('Try again'),
                 ),
               ],
             ),

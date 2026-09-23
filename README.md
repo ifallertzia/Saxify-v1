@@ -1,52 +1,28 @@
 # Saxify
 
-Saxify — *Stream beyond limits.* A neon, YouTube-powered music player built with Flutter. Version **2.1.0** is being prepared from `ifallertzia/Saxify-v1`.
+*Stream beyond limits.* Saxify 2.1.0 is a Flutter music player with Hindi-first discovery, Android background playback, a local library and an on-device downloader. Canonical releases and updates: [ifallertzia/Saxify-v1](https://github.com/ifallertzia/Saxify-v1/releases).
 
-## Features
+## Listen and discover
 
-- **Home & Explore** — automatically loaded India-first shelves and stations, including Hindi/Bollywood, devotional, workout, regional, and Osho categories.
-- **Search** — song-focused results, biased toward Hindi and Indian music; search and catalog selection continue to use the existing YouTube-based music service.
-- **Player** — Saxify’s existing playback engine, with a persistent mini-player, full player controls, queue, gapless pre-load, auto-next, and background media-session initialization.
-- **Artists & albums** — YouTube metadata with Hindi-first music-search fallbacks when channel or release data is unavailable.
-- **Library** — Liked Songs, Playlists, Songs, Indian Artists, Downloads, and History.
-- **Song downloads** — live progress, private offline copies, and playback from Library → Downloads.
-- **Universal Downloader** — separate from music playback; bulk public URLs, best-quality defaults, video-only, video + audio, and audio modes.
-- **Profile & Settings** — a first-launch display name, theme accents, playback settings, diagnostics, contact/report drafts, and backup tools.
+- Home shelves load automatically; search and moods favor songs, Indian music and long-form music (including mixes and Osho meditation). Artist rails resolve real photos where available.
+- The existing `PlaybackService` resolves YouTube streams for `just_audio`, manages a queue, auto-next, speed, quality and notification controls. Stream interruptions trigger URL re-resolution, a seek to the last position and a retry. Android keeps its media notification and a playback wake lock while playing.
+- Android player Sound opens a translucent volume/equalizer panel attached to the active audio session. Equalizer hardware support varies by device; volume works even when an equalizer is unavailable.
+- Library → Your Downloads plays previously saved songs from app-private files. Offline playback works without internet; **a new YouTube download still requires internet to retrieve the source**, even though no Saxify download server is involved.
+- Library JSON backup/import is local. Playlist code sync uses a separate pre-existing cloud service and is not involved in downloads.
 
-## Playback engine
+## Download media on the phone (Android)
 
-`lib/core/services/playback_service.dart` retains Saxify’s existing HEAD-probe and `androidSdkless` → `ios` → `androidVr` stream fallback. New catalog and download controls do not replace that player.
+The song Download button and Add link/Bulk use the same bundled `youtubedl-android` (yt-dlp + FFmpeg) native bridge. Public YouTube and other yt-dlp-supported URLs are resolved on the device. Nothing calls a Render/downloader backend. Private, paid, login-gated or unsupported sources are not bypassed.
 
-## Local library JSON vs. playlist codes
+1. On a song, tap Download; watch its percentage on the song row, then open Library → Your Downloads or Settings → Music downloads to play/delete the offline copy.
+2. For a public URL, open the Downloader, paste/fetch a link, choose best/explicit format and video + audio, video only, or MP3 audio. Bulk accepts multiple URLs and runs through the same local pipeline.
+3. Completed files are kept app-private for reliable offline playback. A best-effort copy is also published under `Download/Saxify` through Android MediaStore (legacy Downloads on Android 9 and earlier). Android 9 and earlier may need storage permission for the public copy. Cancelling removes partial private files. If MediaStore is unavailable, the private offline copy is still available.
 
-These are different backup paths:
+Files keep their real extensions/containers (e.g., M4A, WebM, MKV); yt-dlp + bundled FFmpeg convert the MP3 option. Downloads can be played only after they have finished; this app does not promise offline *fetching*. On non-Android platforms, the existing playable-stream audio fallback is used for song downloads; the yt-dlp link downloader is Android-only.
 
-- **Library JSON** is exported/imported locally from Library → backup or Settings → Backup library. It covers likes, songs, playlists, history, and followed artists. It is not uploaded to Render. Clipboard paste and merge/replace are supported.
-- **Playlist codes** are server-backed and require the playlist Render service. Generating a single code uses `POST /playlist`; generating all playlists uses `POST /playlist/all`. Restoring one playlist uses `GET /playlist/:code`; restoring all playlists uses `GET /playlist/all/:code`. The app tries the bulk route first and falls back to the single-playlist route.
+**Licensing:** Inter is bundled under the SIL Open Font License; see `assets/fonts/OFL.txt`. The bundled `youtubedl-android`/yt-dlp integration includes GPL-3.0-licensed components. Anyone distributing an APK should review the applicable GPL source/attribution and distribution obligations alongside their other dependencies.
 
-If the playlist service does not implement one of those routes, local JSON backup/import still works; the missing server route must be deployed for that cloud-code operation.
-
-## Render downloader contract
-
-The app’s default universal-downloader host is `https://saxify-downloader.onrender.com` (overridable in Settings). The app now sends eligible public YouTube URLs to this backend. It does not provide cookies or bypass private, login-gated, or paywalled content.
-
-The deployed service must implement and verify all of the following before YouTube downloads can be considered functional:
-
-- `GET /api/health` returning `status`, `app`, `version`, `ffmpeg`, and `yt_dlp`.
-- `POST /api/fetch-info` accepting `{ "url": "..." }` and returning a title, thumbnail, duration, and usable format metadata. It must allow supported public YouTube URLs through its `yt-dlp` resolver without credentials/cookies.
-- `GET /api/download?url=...&type=...&format_id=...` with HTTP Range support. `type` values sent by the app are `video`, `video_only`, and `audio`; omitted `format_id` means best available quality. The server should merge best video + audio for `video`, return a video-only stream for `video_only`, and provide audio/MP3 for `audio`.
-- `X-Saxify-Client: flutter` and the app User-Agent must be accepted.
-- Private/login-required media should return a clear unsupported/authorization error; do not use session cookies or defeat those restrictions.
-
-**Backend status is unverified from this workspace:** Render host TLS handshakes failed here, so this repository cannot confirm deployed health, routes, or formats. The exact server work to check is `/api/fetch-info` public-YouTube handling plus `/api/download` support for the three `type` values above, including best-quality selection, format IDs, range streaming, and error handling. Do not treat the client change as proof those Render routes exist.
-
-## In-app updater and releases
-
-The updater checks the latest release from `ifallertzia/Saxify-v1` and looks for an APK asset named `app-release.apk`. The Actions workflow builds on this feature branch and on pull requests, but **never publishes a release from those runs**. A versioned GitHub Release (`v<version>`) with the APK is created only when the complete build job succeeds on the default `main` branch. Release notes come from `RELEASE_NOTES.md`.
-
-To prepare a later release, bump `version:` in `pubspec.yaml`, keep `SaxifyBranding.versionLabel` and `RELEASE_NOTES.md` aligned, then merge after review. The post-merge `main` build publishes the matching APK for the in-app updater.
-
-## Build
+## Build and releases
 
 ```sh
 flutter pub get
@@ -55,4 +31,4 @@ flutter test
 flutter build apk --release
 ```
 
-CI also builds a release app bundle. Flutter analysis, all unit/widget tests, APK, and AAB builds are blocking steps; any failure prevents release publication.
+`pubspec.yaml` declares 2.1.0+4. The updater reads the latest release from [`ifallertzia/Saxify-v1`](https://github.com/ifallertzia/Saxify-v1/releases) and looks for `app-release.apk`. `RELEASE_NOTES.md` is also bundled verbatim as the in-app What's new list. The existing GitHub Actions workflow publishes a versioned APK only after a successful default-branch build; feature-branch builds never create a release.

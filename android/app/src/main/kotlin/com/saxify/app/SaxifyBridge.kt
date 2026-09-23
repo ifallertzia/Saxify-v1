@@ -7,12 +7,16 @@ import android.content.Context
 import android.content.Intent
 import android.media.audiofx.Equalizer
 import android.net.Uri
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
+import android.os.PowerManager
 import java.io.File
 import java.io.FileInputStream
 import kotlin.concurrent.thread
@@ -24,6 +28,8 @@ import kotlin.concurrent.thread
 class SaxifyBridge(private val activity: Activity) {
     private var equalizer: Equalizer? = null
     private var sessionId: Int = 0
+    val localDownloads = LocalDownloader(activity.applicationContext)
+    private var playbackLock: PowerManager.WakeLock? = null
 
     fun handle(call: MethodCall, result: MethodChannel.Result) {
         try {
@@ -31,10 +37,6 @@ class SaxifyBridge(private val activity: Activity) {
                 "bootState" -> result.success(SaxifyBoot.snapshot(activity))
                 "markLaunchSuccess" -> {
                     SaxifyBoot.markSuccess(activity)
-                    result.success(null)
-                }
-                "clearFlutterPrefs" -> {
-                    clearLocal(activity)
                     result.success(null)
                 }
                 "saveToDownloads" -> io(result) {
@@ -57,11 +59,44 @@ class SaxifyBridge(private val activity: Activity) {
                     )
                     result.success(null)
                 }
+                "openSupportEmail" -> {
+                    result.success(openSupportEmail(
+                        call.argument<String>("to") ?: "",
+                        call.argument<String>("subject") ?: "",
+                        call.argument<String>("body") ?: "",
+                    ))
+                }
                 "openContent" -> {
                     openContent(
                         call.argument<String>("uri") ?: "",
                         call.argument<String>("mime") ?: "*/*",
                     )
+                    result.success(null)
+                }
+                "localDownloaderHealth" -> io(result) { localDownloads.health() }
+                "fetchLocalInfo" -> io(result) {
+                    localDownloads.info(call.argument<String>("url") ?: "")
+                }
+                "downloadLocal" -> io(result) {
+                    localDownloads.download(
+                        call.argument<String>("url") ?: "",
+                        call.argument<String>("jobId") ?: "",
+                        call.argument<String>("kind") ?: "",
+                        call.argument<String>("formatId"),
+                        call.argument<Boolean>("formatHasAudio") == true,
+                    )
+                }
+                "cancelLocal" -> result.success(
+                    localDownloads.cancel(call.argument<String>("jobId") ?: "")
+                )
+                "isOnWifi" -> {
+                    val manager = activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                    val caps = manager.getNetworkCapabilities(manager.activeNetwork)
+                    result.success(caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
+                        caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true)
+                }
+                "setPlaybackWakeLock" -> {
+                    setPlaybackWakeLock(call.argument<Boolean>("enabled") == true)
                     result.success(null)
                 }
                 "eqInit" -> result.success(eqInit(call.argument<Int>("sessionId") ?: 0))
@@ -123,11 +158,16 @@ class SaxifyBridge(private val activity: Activity) {
         val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         val uri = resolver.insert(collection, values)
             ?: throw IllegalStateException("Could not create a Downloads entry")
-        resolver.openOutputStream(uri)?.use { out ->
-            FileInputStream(src).use { input -> input.copyTo(out) }
-        } ?: throw IllegalStateException("Could not write the download")
-        val done = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }
-        resolver.update(uri, done, null, null)
+        try {
+            resolver.openOutputStream(uri)?.use { out ->
+                FileInputStream(src).use { input -> input.copyTo(out) }
+            } ?: throw IllegalStateException("Could not write the download")
+            val done = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }
+            resolver.update(uri, done, null, null)
+        } catch (error: Exception) {
+            resolver.delete(uri, null, null)
+            throw error
+        }
         return mapOf(
             "displayName" to displayName,
             "uri" to uri.toString(),
@@ -161,6 +201,18 @@ class SaxifyBridge(private val activity: Activity) {
         var removed = false
         if (!uri.isNullOrEmpty() && uri.startsWith("content:")) {
             removed = activity.contentResolver.delete(Uri.parse(uri), null, null) > 0
+        }
+        // Android 9 and below return file: URIs for the public copy. Delete
+        // only files in our own public Saxify folder, not arbitrary file URIs.
+        if (!uri.isNullOrEmpty() && uri.startsWith("file:")) {
+            val publicRoot = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "Saxify",
+            ).canonicalFile
+            val publicFile = File(Uri.parse(uri).path ?: "").canonicalFile
+            if (publicFile.parentFile == publicRoot && publicFile.exists()) {
+                removed = publicFile.delete() || removed
+            }
         }
         if (!path.isNullOrEmpty()) {
             val file = File(path)
@@ -234,11 +286,25 @@ class SaxifyBridge(private val activity: Activity) {
         activity.startActivity(Intent.createChooser(intent, title))
     }
 
+    private fun openSupportEmail(to: String, subject: String, body: String): Boolean {
+        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$to")).apply {
+            putExtra(Intent.EXTRA_EMAIL, arrayOf(to))
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, body)
+        }
+        return try {
+            activity.startActivity(intent)
+            true
+        } catch (_: android.content.ActivityNotFoundException) {
+            false
+        }
+    }
+
     private fun openContent(raw: String, mime: String) {
-        val uri = if (raw.startsWith("content:") || raw.startsWith("file:")) {
+        val uri = if (raw.startsWith("content:")) {
             Uri.parse(raw)
         } else {
-            contentUri(raw, null)
+            contentUri(if (raw.startsWith("file:")) Uri.parse(raw).path else raw, null)
         }
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, mime)
@@ -251,6 +317,20 @@ class SaxifyBridge(private val activity: Activity) {
         if (!uri.isNullOrEmpty() && uri.startsWith("content:")) return Uri.parse(uri)
         val file = File(path ?: throw IllegalArgumentException("No file to share"))
         return FileProvider.getUriForFile(activity, "${activity.packageName}.fileprovider", file)
+    }
+
+    private fun setPlaybackWakeLock(enabled: Boolean) {
+        if (!enabled) {
+            playbackLock?.let { if (it.isHeld) it.release() }
+            playbackLock = null
+            return
+        }
+        val lock = playbackLock ?: (activity.getSystemService(Context.POWER_SERVICE) as PowerManager)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Saxify:AudioPlayback").also {
+                it.setReferenceCounted(false)
+                playbackLock = it
+            }
+        if (!lock.isHeld) lock.acquire()
     }
 
     private fun eqInit(id: Int): Map<String, Any> {
@@ -281,6 +361,7 @@ class SaxifyBridge(private val activity: Activity) {
         }
         return mapOf(
             "bands" to bands,
+            "enabled" to eq.enabled,
             "min" to range[0].toInt(),
             "max" to range[1].toInt(),
             "centersMilliHz" to centers,
@@ -311,6 +392,7 @@ class SaxifyBridge(private val activity: Activity) {
 
     private fun emptyEq(): Map<String, Any> = mapOf(
         "bands" to 0,
+        "enabled" to false,
         "min" to -1500,
         "max" to 1500,
         "centersMilliHz" to emptyList<Int>(),
@@ -332,23 +414,4 @@ class SaxifyBridge(private val activity: Activity) {
         return file
     }
 
-    companion object {
-        fun clearLocal(context: Context) {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .edit()
-                .clear()
-                .apply()
-            SaxifyBoot.reset(context)
-            // listOfNotNull: getDatabasePath() is nullable, and a List<File?> would
-            // make exists()/delete() illegal calls.
-            val names = listOfNotNull(
-                File(context.filesDir, "saxify_reco.db"),
-                File(context.getDir("flutter", Context.MODE_PRIVATE), "saxify_reco.db"),
-                context.getDatabasePath("saxify_reco.db"),
-            ).distinct()
-            for (file in names) {
-                if (file.exists()) file.delete()
-            }
-        }
-    }
 }
