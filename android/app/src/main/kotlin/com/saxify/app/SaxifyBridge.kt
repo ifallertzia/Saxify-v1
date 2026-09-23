@@ -351,7 +351,9 @@ class SaxifyBridge(private val activity: Activity) {
         }
         try {
             if (reverb == 0.0) {
-                reverb?.enabled = false
+                // `reverb` is also the Double parameter here — the field needs
+                // the explicit receiver.
+                this.reverb?.enabled = false
             } else {
                 if (this.reverb == null) {
                     this.reverb = EnvironmentalReverb(0, audioSessionId()).apply { enabled = true }

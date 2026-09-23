@@ -101,17 +101,17 @@ class SpatialAudioProcessor(sampleRate: Int = 44_100) {
     private val combSizes = intArrayOf(2113, 2713, 3371)
     private val combs = Array(combSizes.size) { FloatArray(combSizes[it]) }
     private val combIndex = IntArray(combSizes.size)
-    private const val COMB_FEEDBACK = 0.72f
+    private val combFeedback = 0.72f
 
     private val allPassSize = 4093
     private val allPass = FloatArray(allPassSize)
     private var allPassIndex = 0
-    private const val ALLPASS_GAIN = 0.5f
+    private val allPassGain = 0.5f
 
     private var phase = 0.0
-    private var smoothedLeft = 1.0
-    private var smoothedRight = 1.0
-    private const val SMOOTHING = 0.02
+    private var smoothedLeft = 1f
+    private var smoothedRight = 1f
+    private val smoothing = 0.02f
 
     /** Current pan position, -1 (left) … +1 (right). Used by the UI meter. */
     fun currentPan(): Double = sin(phase) * depth
@@ -146,8 +146,8 @@ class SpatialAudioProcessor(sampleRate: Int = 44_100) {
             val theta = (pan + 1.0) * (PI / 4.0)
             val targetLeft = cos(theta).toFloat()
             val targetRight = sin(theta).toFloat()
-            smoothedLeft += (targetLeft - smoothedLeft) * SMOOTHING
-            smoothedRight += (targetRight - smoothedRight) * SMOOTHING
+            smoothedLeft += (targetLeft - smoothedLeft) * smoothing
+            smoothedRight += (targetRight - smoothedRight) * smoothing
 
             var outL = (mid * (1f - 0.15f * d.toFloat()) + side) * smoothedLeft
             var outR = (mid * (1f - 0.15f * d.toFloat()) - side) * smoothedRight
@@ -159,17 +159,17 @@ class SpatialAudioProcessor(sampleRate: Int = 44_100) {
                 for (c in combs.indices) {
                     val idx = combIndex[c]
                     val delayed = combs[c][idx]
-                    combs[c][idx] = (outL + outR) * 0.5f + delayed * COMB_FEEDBACK
+                    combs[c][idx] = (outL + outR) * 0.5f + delayed * combFeedback
                     combIndex[c] = if (idx + 1 >= combs[c].size) 0 else idx + 1
                     wet += delayed
                 }
                 wet /= combs.size
                 // one all-pass diffuser for a smoother tail
                 val apDelayed = allPass[allPassIndex]
-                val apInput = wet + ALLPASS_GAIN * apDelayed
+                val apInput = wet + allPassGain * apDelayed
                 allPass[allPassIndex] = apInput
                 allPassIndex = if (allPassIndex + 1 >= allPassSize) 0 else allPassIndex + 1
-                wet = apDelayed - ALLPASS_GAIN * apInput
+                wet = apDelayed - allPassGain * apInput
 
                 outL = outL * dry + wet * mix.toFloat()
                 outR = outR * dry + wet * mix.toFloat()
@@ -190,8 +190,8 @@ class SpatialAudioProcessor(sampleRate: Int = 44_100) {
     /** Clears every delay line (call on pause / track change). */
     fun reset() {
         phase = 0.0
-        smoothedLeft = 1.0
-        smoothedRight = 1.0
+        smoothedLeft = 1f
+        smoothedRight = 1f
         allPassIndex = 0
         allPass.fill(0f)
         for (c in combs.indices) {
