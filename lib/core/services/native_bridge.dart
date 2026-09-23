@@ -43,24 +43,14 @@ class NativeBridge {
     }
   }
 
-  /// Used for Wi-Fi vs mobile stream quality; only called when resolving.
-  static Future<bool> isOnWifi() async {
-    if (kIsWeb || !Platform.isAndroid) return false;
-    try {
-      return await _channel.invokeMethod<bool>('isOnWifi') ?? false;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// A CPU partial wake lock held ONLY while audio is playing. The existing
-  /// media-playback foreground service supplies the ongoing notification.
-  static Future<void> setPlaybackWakeLock(bool enabled) async {
+  static Future<void> clearLocalPrefs() async {
     if (kIsWeb || !Platform.isAndroid) return;
     try {
-      await _channel.invokeMethod<void>('setPlaybackWakeLock', <String, bool>{'enabled': enabled});
-    } catch (error) {
-      debugPrint('Audio wake lock: $error');
+      await _channel
+          .invokeMethod<void>('clearFlutterPrefs')
+          .timeout(const Duration(seconds: 2));
+    } catch (e) {
+      debugPrint('[Saxify][Boot] clearFlutterPrefs failed: $e');
     }
   }
 
@@ -129,19 +119,6 @@ class NativeBridge {
       'title': title,
       'uri': uri,
     });
-  }
-
-  static Future<bool> openSupportEmail({
-    required String to, required String subject, required String body,
-  }) async {
-    if (kIsWeb || !Platform.isAndroid) return false;
-    try {
-      return await _channel.invokeMethod<bool>('openSupportEmail', <String, String>{
-        'to': to, 'subject': subject, 'body': body,
-      }) ?? false;
-    } catch (_) {
-      return false;
-    }
   }
 
   static Future<void> openContent(String uri, String mime) async {
@@ -232,7 +209,6 @@ class SavedFile {
 class EqualizerInfo {
   const EqualizerInfo({
     required this.bands,
-    required this.enabled,
     required this.minLevel,
     required this.maxLevel,
     required this.centersMilliHz,
@@ -241,7 +217,6 @@ class EqualizerInfo {
   });
 
   final int bands;
-  final bool enabled;
   final int minLevel;
   final int maxLevel;
   final List<int> centersMilliHz;
@@ -253,7 +228,6 @@ class EqualizerInfo {
   factory EqualizerInfo.fromMap(Map<Object?, Object?> raw) {
     return EqualizerInfo(
       bands: raw['bands'] is int ? raw['bands'] as int : 0,
-      enabled: raw['enabled'] == true,
       minLevel: raw['min'] is int ? raw['min'] as int : -1500,
       maxLevel: raw['max'] is int ? raw['max'] as int : 1500,
       centersMilliHz: _ints(raw['centersMilliHz']),

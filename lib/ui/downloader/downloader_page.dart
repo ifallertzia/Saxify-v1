@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/services/settings_service.dart';
@@ -37,6 +37,7 @@ class _DownloaderPageState extends State<DownloaderPage> {
       if (!mounted) return;
       final SettingsService settings = context.read<SettingsService>();
       final UniversalDownloader downloader = context.read<UniversalDownloader>();
+      downloader.api.baseUrl = settings.downloaderBaseUrl;
       downloader.refreshHealth();
       final DownloaderMode mode = settings.downloaderMode;
       if (mode == DownloaderMode.audioMp3) {
@@ -73,9 +74,7 @@ class _DownloaderPageState extends State<DownloaderPage> {
         _syncBulk();
       }
     } else {
-      final List<String> links = PlatformDetect.splitUrls(text);
-      if (links.isEmpty) return;
-      _url.text = links.first;
+      _url.text = PlatformDetect.splitUrls(text).first;
       context.read<UniversalDownloader>().setUrl(_url.text);
       setState(() {});
     }
@@ -147,7 +146,7 @@ class _DownloaderPageState extends State<DownloaderPage> {
                 Expanded(
                   child: Text(
                     'Saxify Downloader',
-                    style: SaxifyFonts.display(fontSize: 24, fontWeight: FontWeight.w700),
+                    style: GoogleFonts.spaceGrotesk(fontSize: 24, fontWeight: FontWeight.w700),
                   ),
                 ),
                 IconButton(
@@ -161,10 +160,10 @@ class _DownloaderPageState extends State<DownloaderPage> {
             ),
             Text(
               downloader.health == null
-                  ? 'Preparing on-device downloader…'
+                  ? 'Checking server…'
                   : downloader.health!.ok
-                      ? 'Ready on this device · yt-dlp ${downloader.health!.version}'
-                      : (downloader.health!.error ?? 'Downloader unavailable on this device'),
+                      ? '${downloader.health!.app} · ${downloader.health!.version}'
+                      : (downloader.health!.error ?? 'Server unreachable'),
               style: const TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
             ),
             const SizedBox(height: 12),
@@ -194,7 +193,7 @@ class _DownloaderPageState extends State<DownloaderPage> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Best quality by default. Public links are downloaded on your device with yt-dlp — no Saxify server. Private or login-gated content is not supported.',
+              'Downloads use best quality by default. Public YouTube links are sent to the configured backend; private or login-gated content is not supported.',
               style: TextStyle(fontSize: 11, color: SaxifyColors.textMuted),
             ),
             const SizedBox(height: 12),
@@ -329,7 +328,7 @@ class _DownloaderPageState extends State<DownloaderPage> {
                       (MediaFormat format) => switch (_kind) {
                         DownloadKind.audio => format.hasAudio,
                         DownloadKind.videoOnly => format.hasVideo && !format.hasAudio,
-                        DownloadKind.video => format.hasVideo,
+                        DownloadKind.video => format.hasVideo && format.hasAudio,
                       },
                     ))
                       ChoiceChip(

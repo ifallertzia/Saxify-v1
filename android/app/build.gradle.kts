@@ -50,8 +50,4 @@ flutter {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.16.0")
-    // Bundled yt-dlp/Python and FFmpeg; no Render downloader or external API.
-    // GPL-3.0 components: https://github.com/yausername/youtubedl-android
-    implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
-    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
 }

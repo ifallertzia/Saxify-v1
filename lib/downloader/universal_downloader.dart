@@ -1,37 +1,45 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
+import '../config/backend_config.dart';
 import '../core/services/native_bridge.dart';
 import '../core/utils/filenames.dart';
 import 'download_history_store.dart';
+import 'downloader_api.dart';
 import 'downloader_models.dart';
-import 'local_downloader.dart';
 import 'platform_detect.dart';
 
-/// Bulk and single-link downloads share one on-device yt-dlp pipeline. No
-/// download-server health/fetch/download endpoint is ever used here.
+/// Universal downloader. Separate from music playback and from the music
+/// stream resolver. Uses the downloader backend (yt-dlp / ffmpeg server-side).
 class UniversalDownloader extends ChangeNotifier {
   UniversalDownloader({
     required DownloadHistoryStore history,
-    LocalDownloader? local,
+    DownloaderApi? api,
+    Dio? dio,
   })  : _history = history,
-        _local = local ?? LocalDownloader() {
+        api = api ?? DownloaderApi(),
+        _dio = dio ?? Dio() {
     records = _history.read();
   }
 
   final DownloadHistoryStore _history;
-  final LocalDownloader _local;
+  final DownloaderApi api;
+  final Dio _dio;
 
   List<DownloadRecord> records = <DownloadRecord>[];
   DownloaderHealth? health;
   bool healthLoading = false;
+
   MediaInfo? info;
   String? infoError;
   bool fetching = false;
   String activeUrl = '';
   MediaPlatform detected = MediaPlatform.other;
   MediaPlatform overridePlatform = MediaPlatform.auto;
+
   JobStatus jobStatus = JobStatus.idle;
   double fraction = 0;
   int received = 0;
@@ -39,11 +47,11 @@ class UniversalDownloader extends ChangeNotifier {
   DateTime? startedAt;
   String? jobError;
   String speedLabel = '';
-  String? _jobId;
-  bool _cancelRequested = false;
+  CancelToken? _token;
   bool stopBulk = false;
   bool bulkRunning = false;
   BulkRow? _activeBulkRow;
+
   final List<BulkRow> bulk = <BulkRow>[];
 
   MediaPlatform get effectivePlatform =>
@@ -70,14 +78,13 @@ class UniversalDownloader extends ChangeNotifier {
   Future<void> refreshHealth() async {
     healthLoading = true;
     notifyListeners();
-    health = await _local.health();
+    health = await api.health();
     healthLoading = false;
     notifyListeners();
   }
 
   Future<MediaInfo?> fetch() async {
-    final String url = activeUrl;
-    final String? blocked = PlatformDetect.blockedReason(url);
+    final String? blocked = PlatformDetect.blockedReason(activeUrl);
     if (blocked != null) {
       infoError = blocked;
       info = null;
@@ -88,15 +95,12 @@ class UniversalDownloader extends ChangeNotifier {
     infoError = null;
     notifyListeners();
     try {
-      final MediaInfo loaded = await _local.fetchInfo(url);
-      if (activeUrl != url) return null; // don't show a previous link's formats
+      final MediaInfo loaded = await api.fetchInfo(activeUrl);
       info = loaded;
       return loaded;
-    } catch (error) {
-      if (activeUrl == url) {
-        info = null;
-        infoError = localDownloadError(error);
-      }
+    } catch (e) {
+      info = null;
+      infoError = classifyDownloadError(e);
       return null;
     } finally {
       fetching = false;
@@ -109,74 +113,105 @@ class UniversalDownloader extends ChangeNotifier {
     MediaFormat? format,
     bool best = false,
   }) async {
-    if (_jobId != null) return null;
-    final String url = activeUrl;
-    final String? blocked = PlatformDetect.blockedReason(url);
+    final String? blocked = PlatformDetect.blockedReason(activeUrl);
     if (blocked != null) {
       jobError = blocked;
       jobStatus = JobStatus.failed;
       notifyListeners();
       return null;
     }
+    final String type = switch (kind) {
+      DownloadKind.audio => 'audio',
+      DownloadKind.videoOnly => 'video_only',
+      DownloadKind.video => 'video',
+    };
+    final String ext = kind == DownloadKind.audio ? 'mp3' : 'mp4';
     final String title = info?.title ?? 'download';
-    final String thumbnail = info?.thumbnail ?? '';
-    final MediaPlatform platform = effectivePlatform;
-    final String jobId = LocalDownloader.newJobId();
-    _jobId = jobId;
-    _cancelRequested = false;
+    final String name = Filenames.saxify(title, ext);
     jobStatus = JobStatus.downloading;
     fraction = 0;
     received = 0;
     total = null;
     jobError = null;
-    speedLabel = 'On device';
     startedAt = DateTime.now();
+    speedLabel = '';
     notifyListeners();
 
-    LocalFile? file;
+    File? temp;
+    _token = CancelToken();
+    int lastBytes = 0;
+    DateTime lastTick = DateTime.now();
+
     try {
-      file = await _local.download(
-        url: url,
-        jobId: jobId,
-        kind: kind,
+      final Directory cache = await getTemporaryDirectory();
+      final File tempFile = File('${cache.path}/$name.part');
+      temp = tempFile;
+      if (tempFile.existsSync()) await tempFile.delete();
+      final Uri uri = api.downloadUri(
+        url: activeUrl,
+        type: type,
         formatId: best ? null : format?.id,
-        formatHasAudio: format?.hasAudio ?? false,
-        onProgress: (double value) {
-          if (_jobId != jobId || _cancelRequested) return;
-          fraction = value;
-          if (_activeBulkRow != null) _activeBulkRow!.fraction = value;
+      );
+      await _dio.download(
+        uri.toString(),
+        tempFile.path,
+        cancelToken: _token,
+        options: Options(
+          headers: BackendConfig.downloadHeaders(),
+          followRedirects: true,
+          receiveTimeout: const Duration(minutes: 20),
+        ),
+        onReceiveProgress: (int got, int all) {
+          received = got;
+          total = all > 0 ? all : null;
+          fraction = all <= 0 ? 0 : (got / all).clamp(0.0, 1.0);
+          if (_activeBulkRow != null) _activeBulkRow!.fraction = fraction;
+          final DateTime now = DateTime.now();
+          final int ms = now.difference(lastTick).inMilliseconds;
+          if (ms > 400) {
+            final double kbps = (got - lastBytes) / ms;
+            speedLabel = '${kbps.toStringAsFixed(0)} KB/s';
+            lastBytes = got;
+            lastTick = now;
+          }
           notifyListeners();
         },
       );
-      if (_cancelRequested) throw StateError('Download cancelled');
-      if (!await File(file.path).exists()) throw StateError('Downloaded file is missing');
-      final String name = Filenames.saxify(title, file.extension.isEmpty ? 'mp4' : file.extension);
+
+      final int size = await tempFile.length();
+      final RandomAccessFile raf = await tempFile.open();
+      final List<int> head = await raf.read(48);
+      await raf.close();
+      if (Filenames.looksCorrupt(head, size)) {
+        throw Exception('File was empty or corrupt');
+      }
+      final File finalFile = File('${cache.path}/$name');
+      if (finalFile.existsSync()) await finalFile.delete();
+      await tempFile.rename(finalFile.path);
+
       SavedFile? saved;
       try {
         saved = await NativeBridge.saveToDownloads(
-          sourcePath: file.path, displayName: name, mime: file.mime,
+          sourcePath: finalFile.path,
+          displayName: name,
+          mime: kind == DownloadKind.audio ? 'audio/mpeg' : 'video/mp4',
         );
-      } catch (error) {
-        debugPrint('Public Downloads copy unavailable: $error');
-      }
-      if (_cancelRequested) {
-        await NativeBridge.deleteDownload(uri: saved?.uri,
-          path: saved?.uri?.startsWith('file:') == true ? saved?.path : null);
-        throw StateError('Download cancelled');
+      } catch (e) {
+        debugPrint('[Saxify][UniversalDownloader] public save failed: $e');
       }
       final DownloadRecord record = DownloadRecord(
-        id: jobId,
-        url: url,
+        id: 'dl_${DateTime.now().microsecondsSinceEpoch}',
+        url: activeUrl,
         title: title,
-        platform: platform,
+        platform: effectivePlatform,
         kind: kind,
-        quality: format?.label ?? 'Best available',
+        quality: format?.label ?? (best ? 'Best available' : type),
         createdAt: DateTime.now(),
-        thumbnail: thumbnail,
-        size: file.size,
-        // Keep the private file for offline use even if MediaStore fails.
-        path: file.path,
+        thumbnail: info?.thumbnail ?? '',
+        size: size,
+        path: saved?.path ?? finalFile.path,
         uri: saved?.uri,
+        status: JobStatus.done,
       );
       records.insert(0, record);
       await _history.write(records);
@@ -184,24 +219,31 @@ class UniversalDownloader extends ChangeNotifier {
       fraction = 1;
       notifyListeners();
       return record;
-    } catch (error) {
-      if (file != null) {
-        try { await File(file.path).parent.delete(recursive: true); } catch (_) {}
-      }
-      jobStatus = _cancelRequested || localDownloadError(error).toLowerCase().contains('cancel')
-          ? JobStatus.cancelled : JobStatus.failed;
-      jobError = jobStatus == JobStatus.cancelled ? 'Download cancelled' : localDownloadError(error);
+    } on DioException catch (e) {
+      _deleteTemp(temp);
+      jobStatus = CancelToken.isCancel(e) ? JobStatus.cancelled : JobStatus.failed;
+      jobError = CancelToken.isCancel(e)
+          ? 'Cancelled'
+          : classifyDownloadError(e, status: e.response?.statusCode, body: '${e.response?.data}');
+    } catch (e) {
+      _deleteTemp(temp);
+      jobStatus = JobStatus.failed;
+      jobError = classifyDownloadError(e);
     } finally {
-      _jobId = null;
+      _token = null;
       notifyListeners();
     }
     return null;
   }
 
-  void cancel() {
-    _cancelRequested = true;
-    final String? id = _jobId;
-    if (id != null) _local.cancel(id);
+  void cancel() => _token?.cancel('user');
+
+  void _deleteTemp(File? file) {
+    try {
+      if (file?.existsSync() == true) file!.deleteSync();
+    } catch (e) {
+      debugPrint('[Saxify][UniversalDownloader] temp cleanup failed: $e');
+    }
   }
 
   void loadBulk(String raw) {
@@ -275,6 +317,7 @@ class UniversalDownloader extends ChangeNotifier {
         final DownloadKind downloadKind = kind ??
             (mode == DownloaderMode.audioMp3 ? DownloadKind.audio : DownloadKind.video);
         row.status = JobStatus.downloading;
+        row.fraction = 0;
         _activeBulkRow = row;
         notifyListeners();
         final DownloadRecord? record = await download(kind: downloadKind, best: true);

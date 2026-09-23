@@ -72,7 +72,7 @@ class _DownloadLibraryPageState extends State<DownloadLibraryPage> {
                 ? const EmptyState(
                     icon: Icons.history_rounded,
                     title: 'Nothing saved yet',
-                    message: 'Downloads stay on this device until you delete them.',
+                    message: 'Downloads stay on this device until you turn on a backup.',
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 140),
@@ -119,12 +119,12 @@ class _DownloadLibraryPageState extends State<DownloadLibraryPage> {
         if (item.uri != null && item.uri!.startsWith('content:')) {
           await NativeBridge.openContent(
             item.uri!,
-            item.mime,
+            item.kind == DownloadKind.audio ? 'audio/mpeg' : 'video/mp4',
           );
         } else if (item.path != null) {
           await NativeBridge.openContent(
             item.path!,
-            item.mime,
+            item.kind == DownloadKind.audio ? 'audio/mpeg' : 'video/mp4',
           );
         }
         return;
@@ -132,7 +132,7 @@ class _DownloadLibraryPageState extends State<DownloadLibraryPage> {
         if (item.path != null) {
           await NativeBridge.shareFile(
             path: item.path!,
-            mime: item.mime,
+            mime: item.kind == DownloadKind.audio ? 'audio/mpeg' : 'video/mp4',
             uri: item.uri,
             title: item.title,
           );

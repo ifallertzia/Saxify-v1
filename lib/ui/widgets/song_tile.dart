@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/song.dart';
@@ -71,7 +71,7 @@ class SongTile extends StatelessWidget {
                   width: 26,
                   child: Text(
                     '#$rank',
-                    style: SaxifyFonts.display(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: isCurrent ? accent.primary : SaxifyColors.textFaint,

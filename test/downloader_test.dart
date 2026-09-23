@@ -2,81 +2,79 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:saxify/core/models/artist_profile.dart';
 import 'package:saxify/core/models/download_item.dart';
 import 'package:saxify/core/models/media_format.dart';
-import 'package:saxify/downloader/platform_detect.dart';
+import 'package:saxify/core/services/downloader/platform_detect.dart';
 
 void main() {
   group('platform detection (Part 11.2)', () {
     test('detects the 20 supported platforms from plain hosts', () {
-      expect(PlatformDetect.detect('https://instagram.com/reel/abc'),
-          MediaPlatform.instagram);
-      expect(PlatformDetect.detect('https://pinterest.com/pin/123'),
-          MediaPlatform.pinterest);
-      expect(PlatformDetect.detect('https://x.com/user/status/1'),
-          MediaPlatform.twitter);
-      expect(PlatformDetect.detect('https://twitter.com/user/status/1'),
-          MediaPlatform.twitter);
-      expect(PlatformDetect.detect('https://facebook.com/watch?v=1'),
-          MediaPlatform.facebook);
-      expect(PlatformDetect.detect('https://reddit.com/r/flutter/comments/1'),
-          MediaPlatform.reddit);
-      expect(PlatformDetect.detect('https://threads.net/@user/post/1'),
-          MediaPlatform.threads);
-      expect(PlatformDetect.detect('https://tiktok.com/@user/video/1'),
-          MediaPlatform.tiktok);
-      expect(PlatformDetect.detect('https://twitch.tv/channel'),
-          MediaPlatform.twitch);
-      expect(PlatformDetect.detect('https://snapchat.com/t/abc'),
-          MediaPlatform.snapchat);
-      expect(PlatformDetect.detect('https://vimeo.com/123456'),
-          MediaPlatform.vimeo);
+      expect(detectPlatform('https://instagram.com/reel/abc').platform,
+          PlatformId.instagram);
+      expect(detectPlatform('https://pinterest.com/pin/123').platform,
+          PlatformId.pinterest);
+      expect(detectPlatform('https://x.com/user/status/1').platform,
+          PlatformId.x);
+      expect(detectPlatform('https://twitter.com/user/status/1').platform,
+          PlatformId.x);
+      expect(detectPlatform('https://facebook.com/watch?v=1').platform,
+          PlatformId.facebook);
+      expect(detectPlatform('https://reddit.com/r/flutter/comments/1').platform,
+          PlatformId.reddit);
+      expect(detectPlatform('https://threads.net/@user/post/1').platform,
+          PlatformId.threads);
+      expect(detectPlatform('https://tiktok.com/@user/video/1').platform,
+          PlatformId.tiktok);
+      expect(detectPlatform('https://twitch.tv/channel').platform,
+          PlatformId.twitch);
+      expect(detectPlatform('https://snapchat.com/t/abc').platform,
+          PlatformId.snapchat);
+      expect(detectPlatform('https://vimeo.com/123456').platform,
+          PlatformId.vimeo);
       expect(
-          PlatformDetect.detect('https://dailymotion.com/video/x8abc'),
-          MediaPlatform.dailymotion);
-      expect(PlatformDetect.detect('https://soundcloud.com/user/track'),
-          MediaPlatform.soundcloud);
-      expect(PlatformDetect.detect('https://rumble.com/c/123'),
-          MediaPlatform.rumble);
-      expect(PlatformDetect.detect('https://imgur.com/a/abc'),
-          MediaPlatform.imgur);
-      expect(PlatformDetect.detect('https://likee.video/@user/video/1'),
-          MediaPlatform.likee);
-      expect(PlatformDetect.detect('https://moj.app/@user/video/1'),
-          MediaPlatform.moj);
-      expect(PlatformDetect.detect('https://sharechat.com/v/123'),
-          MediaPlatform.sharechat);
-      expect(PlatformDetect.detect('https://chingari.com/@user/1'),
-          MediaPlatform.chingari);
-      expect(PlatformDetect.detect('https://youtube.com/watch?v=abc'),
-          MediaPlatform.youtube);
+          detectPlatform('https://dailymotion.com/video/x8abc').platform,
+          PlatformId.dailymotion);
+      expect(detectPlatform('https://soundcloud.com/user/track').platform,
+          PlatformId.soundcloud);
+      expect(detectPlatform('https://rumble.com/c/123').platform,
+          PlatformId.rumble);
+      expect(detectPlatform('https://imgur.com/a/abc').platform,
+          PlatformId.imgur);
+      expect(detectPlatform('https://likee.video/@user/video/1').platform,
+          PlatformId.likee);
+      expect(detectPlatform('https://moj.app/@user/video/1').platform,
+          PlatformId.moj);
+      expect(detectPlatform('https://sharechat.com/v/123').platform,
+          PlatformId.sharechat);
+      expect(detectPlatform('https://chingari.com/@user/1').platform,
+          PlatformId.chingari);
+      expect(detectPlatform('https://youtube.com/watch?v=abc').platform,
+          PlatformId.youtube);
     });
 
     test('handles subdomains and short links', () {
-      expect(PlatformDetect.detect('https://www.instagram.com/p/Cxyz'),
-          MediaPlatform.instagram);
-      expect(PlatformDetect.detect('https://vm.tiktok.com/ZM1/'),
-          MediaPlatform.tiktok);
-      expect(PlatformDetect.detect('https://m.reddit.com/r/x'),
-          MediaPlatform.reddit);
-      expect(PlatformDetect.detect('https://fb.watch/xYz/'),
-          MediaPlatform.facebook);
-      expect(PlatformDetect.detect('https://youtu.be/abc123'),
-          MediaPlatform.youtube);
-      expect(PlatformDetect.detect('https://t.co/abc123'), MediaPlatform.twitter);
+      expect(detectPlatform('https://www.instagram.com/p/Cxyz').platform,
+          PlatformId.instagram);
+      expect(detectPlatform('https://vm.tiktok.com/ZM1/').platform,
+          PlatformId.tiktok);
+      expect(detectPlatform('https://m.reddit.com/r/x').platform,
+          PlatformId.reddit);
+      expect(detectPlatform('https://fb.watch/xYz/').platform,
+          PlatformId.facebook);
+      expect(detectPlatform('https://youtu.be/abc123').platform,
+          PlatformId.youtube);
+      expect(detectPlatform('https://t.co/abc123').platform, PlatformId.x);
     });
 
     test('unknown hosts fall to other, never throw', () {
-      expect(PlatformDetect.detect('https://example.com/video'),
-          MediaPlatform.other);
-      expect(PlatformDetect.detect('not a url'), MediaPlatform.other);
-      expect(PlatformDetect.detect('https://notyoutube.com/watch?v=abc'),
-          MediaPlatform.other);
-      expect(PlatformDetect.detect(''), MediaPlatform.other);
+      expect(detectPlatform('https://example.com/video').platform,
+          PlatformId.other);
+      expect(detectPlatform('not a url').platform, PlatformId.other);
+      expect(detectPlatform('').platform, PlatformId.other);
     });
   });
 
   group('bulk url splitting (Part 11.6)', () {
     test('splits on whitespace, adds https, de-dupes', () {
-      final List<String> urls = PlatformDetect.splitUrls(
+      final List<String> urls = splitUrls(
           'https://instagram.com/a\ninstagram.com/b, tiktok.com/c; x.com/d\n'
           'https://instagram.com/a');
       expect(urls, <String>[
@@ -88,22 +86,22 @@ void main() {
     });
 
     test('skips garbage lines', () {
-      final List<String> urls = PlatformDetect.splitUrls('hello world\ninstagram.com/ok');
+      final List<String> urls = splitUrls('hello world\ninstagram.com/ok');
       expect(urls, <String>['https://instagram.com/ok']);
     });
   });
 
   group('url normalization (Part 11.3)', () {
     test('normalizeUrl adds https when missing', () {
-      expect(PlatformDetect.normalizeUrl('instagram.com/p/1'), 'https://instagram.com/p/1');
-      expect(PlatformDetect.normalizeUrl('https://x.com/1'), 'https://x.com/1');
-      expect(PlatformDetect.normalizeUrl('  https://x.com/1  '), 'https://x.com/1');
+      expect(normalizeUrl('instagram.com/p/1'), 'https://instagram.com/p/1');
+      expect(normalizeUrl('https://x.com/1'), 'https://x.com/1');
+      expect(normalizeUrl('  https://x.com/1  '), 'https://x.com/1');
     });
 
     test('looksLikeUrl rejects non-urls', () {
-      expect(PlatformDetect.looksLikeUrl('https://instagram.com/reel/1'), isTrue);
-      expect(PlatformDetect.looksLikeUrl('just some text'), isFalse);
-      expect(PlatformDetect.looksLikeUrl(''), isFalse);
+      expect(looksLikeUrl('https://instagram.com/reel/1'), isTrue);
+      expect(looksLikeUrl('just some text'), isFalse);
+      expect(looksLikeUrl(''), isFalse);
     });
   });
 

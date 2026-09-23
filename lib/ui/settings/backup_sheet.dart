@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/library_service.dart';
 import '../../core/theme/saxify_theme.dart';
@@ -19,7 +19,7 @@ Future<void> showBackupSheet(BuildContext context, LibraryService library) async
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text('Backup library', style: SaxifyFonts.display(fontSize: 18, fontWeight: FontWeight.w700)),
+            Text('Backup library', style: GoogleFonts.spaceGrotesk(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             const Text(
               'This is a local library JSON backup, separate from cloud playlist codes. It is copied to your clipboard and imported on this device; Saxify does not upload it.',

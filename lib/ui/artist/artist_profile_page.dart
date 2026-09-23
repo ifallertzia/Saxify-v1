@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -87,7 +87,7 @@ class _ArtistProfilePageState extends State<ArtistProfilePage> {
                 child: Text(
                   profile.name,
                   textAlign: TextAlign.center,
-                  style: SaxifyFonts.display(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
                   ),
@@ -106,15 +106,13 @@ class _ArtistProfilePageState extends State<ArtistProfilePage> {
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                 child: Row(
                   children: <Widget>[
-                    Expanded(
-                      child: NeonButton(
+                    NeonButton(
                       label: 'Play top songs',
                       icon: Icons.play_arrow_rounded,
                       expand: true,
                       onPressed: songs.isEmpty
                           ? null
                           : () => context.read<PlaybackService>().playQueue(songs),
-                    ),
                     ),
                     const SizedBox(width: 10),
                     IconButton(

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../config/backend_config.dart';
 import '../../downloader/downloader_models.dart';
 
 /// Everything the Settings screen owns, persisted with shared_preferences.
@@ -27,6 +28,7 @@ class SettingsService extends ChangeNotifier {
   static const String kPlaybackSpeed = 'saxify.playback_speed';
   static const String kExplicitFilter = 'saxify.explicit_filter';
   static const String kLastPositions = 'saxify.last_positions';
+  static const String kDownloaderUrl = 'saxify.downloader_url';
   static const String kDownloaderMode = 'saxify.downloader_mode';
   static const String kLastPlaylistCode = 'saxify.last_playlist_code';
   static const String kAutoPlaylistSync = 'saxify.auto_playlist_sync';
@@ -64,8 +66,6 @@ class SettingsService extends ChangeNotifier {
   String get qualityMobile => _prefs.getString(kQualityMobile) ?? 'medium';
   Future<void> setQualityMobile(String v) =>
       _prefs.setString(kQualityMobile, v).then((_) => notifyListeners());
-
-  String qualityForConnection({required bool wifi}) => wifi ? qualityWifi : qualityMobile;
 
   bool get gapless => _prefs.getBool(kGapless) ?? true;
   Future<void> setGapless(bool v) =>
@@ -124,6 +124,16 @@ class SettingsService extends ChangeNotifier {
   Future<void> forgetPositions() => _prefs.remove(kLastPositions);
 
   // ------------------------------------------------------- v2 remotes
+  String get downloaderBaseUrl {
+    final String raw = _prefs.getString(kDownloaderUrl)?.trim() ?? '';
+    if (raw.isEmpty) return BackendConfig.downloaderBaseDefault;
+    return raw;
+  }
+
+  Future<void> setDownloaderBaseUrl(String value) => _prefs
+      .setString(kDownloaderUrl, value.trim())
+      .then((_) => notifyListeners());
+
   DownloaderMode get downloaderMode {
     final String raw = _prefs.getString(kDownloaderMode) ?? DownloaderMode.ask.name;
     return DownloaderMode.values.firstWhere(

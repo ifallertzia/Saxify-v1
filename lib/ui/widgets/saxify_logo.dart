@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/saxify_accents.dart';
 
@@ -172,7 +172,7 @@ class SaxifyWordmark extends StatelessWidget {
                   effective.horizontalGradient.createShader(bounds),
               child: Text(
                 'Saxify',
-                style: SaxifyFonts.display(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: fontSize,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.4,

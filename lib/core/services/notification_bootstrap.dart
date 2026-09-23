@@ -22,10 +22,10 @@ class NotificationBootstrap {
         androidNotificationChannelName: 'Saxify playback',
         androidNotificationChannelDescription: 'Play, pause, skip and seek',
         androidNotificationOngoing: true,
-        androidStopForegroundOnPause: false,
+        androidStopForegroundOnPause: true,
         androidNotificationIcon: 'mipmap/ic_launcher',
         preloadArtwork: true,
-      ).timeout(const Duration(seconds: 6));
+      ).timeout(const Duration(seconds: 3));
       active = true;
       return true;
     } catch (e) {

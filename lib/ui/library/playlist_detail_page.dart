@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/saxify_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/playlist.dart';
@@ -120,7 +120,7 @@ class PlaylistDetailPage extends StatelessWidget {
                                 playlist.name,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: SaxifyFonts.display(
+                                style: GoogleFonts.spaceGrotesk(
                                     fontSize: 22, fontWeight: FontWeight.w700),
                               ),
                               const SizedBox(height: 5),
@@ -143,15 +143,13 @@ class PlaylistDetailPage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
               child: Row(
                 children: <Widget>[
-                  Expanded(
-                    child: NeonButton(
+                  NeonButton(
                     label: 'Play',
                     icon: Icons.play_arrow_rounded,
                     expand: true,
                     onPressed: songs.isEmpty
                         ? null
                         : () => playback.playQueue(songs),
-                  ),
                   ),
                   const SizedBox(width: 10),
                   IconButton(
