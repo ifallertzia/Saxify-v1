@@ -28,6 +28,7 @@ import 'downloader/download_history_store.dart';
 import 'downloader/universal_downloader.dart';
 import 'ui/shell/shell_controller.dart';
 import 'ui/shell/saxify_shell.dart';
+import 'ui/onboarding/welcome_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,12 +75,13 @@ Future<AppBoot> _initializeApp() async {
       .timeout(const Duration(seconds: 3));
   await _migrateLegacyKeys(prefs);
 
-  if (!native.safeMode) {
-    await NotificationBootstrap.init().timeout(
-      const Duration(seconds: 3),
-      onTimeout: () => false,
-    );
-  }
+  // The notification/media session is what keeps Android audio alive after
+  // the app is backgrounded. Its failure is isolated internally, so still try
+  // it in safe mode rather than silently dropping background playback.
+  await NotificationBootstrap.init().timeout(
+    const Duration(seconds: 3),
+    onTimeout: () => false,
+  );
 
   final SettingsService settings = SettingsService(prefs);
   final LibraryService library = LibraryService(prefs);
@@ -91,7 +93,7 @@ Future<AppBoot> _initializeApp() async {
   );
   final RecommendationService recommendations = RecommendationService(youtube: youtube);
   final ArtistService artists = ArtistService(youtube: youtube);
-  final MusicDownloadService musicDownloads = MusicDownloadService();
+  final MusicDownloadService musicDownloads = MusicDownloadService(prefs: prefs);
   final UniversalDownloader downloader = UniversalDownloader(
     history: DownloadHistoryStore(prefs),
   );
@@ -265,6 +267,19 @@ class _SaxifyAppState extends State<SaxifyApp> {
   }
 }
 
+class SaxifyProfileGate extends StatelessWidget {
+  const SaxifyProfileGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final SettingsService settings = context.watch<SettingsService>();
+    if (settings.displayName.isEmpty) {
+      return WelcomePage(onComplete: settings.setDisplayName);
+    }
+    return const SaxifyShell();
+  }
+}
+
 class _SaxifyRoot extends StatelessWidget {
   const _SaxifyRoot();
 
@@ -277,7 +292,7 @@ class _SaxifyRoot extends StatelessWidget {
       themeMode: ThemeMode.dark,
       theme: SaxifyTheme.build(theme.accent),
       darkTheme: SaxifyTheme.build(theme.accent),
-      home: const SaxifyShell(),
+      home: const SaxifyProfileGate(),
     );
   }
 }

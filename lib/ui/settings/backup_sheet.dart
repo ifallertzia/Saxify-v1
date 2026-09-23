@@ -22,10 +22,22 @@ Future<void> showBackupSheet(BuildContext context, LibraryService library) async
             Text('Backup library', style: GoogleFonts.spaceGrotesk(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             const Text(
-              'Copy stays on the clipboard. Paste checks the JSON before anything is saved.',
+              'This is a local library JSON backup, separate from cloud playlist codes. It is copied to your clipboard and imported on this device; Saxify does not upload it.',
               style: TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
             ),
-            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () async {
+                  final ClipboardData? data = await Clipboard.getData('text/plain');
+                  final String text = data?.text?.trim() ?? '';
+                  if (text.isEmpty) return;
+                  controller.text = text;
+                },
+                icon: const Icon(Icons.content_paste_rounded, size: 18),
+                label: const Text('Paste from clipboard'),
+              ),
+            ),
             TextField(
               controller: controller,
               minLines: 4,

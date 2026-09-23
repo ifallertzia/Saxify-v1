@@ -38,8 +38,18 @@ class _ArtistPageState extends State<ArtistPage> {
   Future<_ArtistData> _load() async {
     final YoutubeService youtube = context.read<YoutubeService>();
     final Channel channel = await youtube.channel(widget.channelId);
-    final List<Song> uploads =
-        await youtube.channelUploads(widget.channelId, limit: 40);
+    List<Song> uploads = <Song>[];
+    try {
+      uploads = await youtube.channelUploads(widget.channelId, limit: 40);
+    } catch (e) {
+      debugPrint('Artist uploads unavailable: $e');
+    }
+    if (uploads.isEmpty) {
+      final String artist = widget.fallbackName?.trim().isNotEmpty == true
+          ? widget.fallbackName!.trim()
+          : channel.title;
+      uploads = await youtube.searchSongs('$artist Hindi songs', limit: 30);
+    }
     return _ArtistData(channel: channel, uploads: uploads);
   }
 

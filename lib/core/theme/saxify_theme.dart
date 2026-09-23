@@ -147,7 +147,7 @@ class SaxifyTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: SaxifyColors.surfaceAlt,
-        selectedColor: accent.primary.withValues(alpha: 0.18),
+        selectedColor: accent.primary.withValues(alpha: 0.34),
         side: const BorderSide(color: SaxifyColors.border),
         labelStyle: const TextStyle(
           color: SaxifyColors.textPrimary,
@@ -200,7 +200,7 @@ class SaxifyTheme {
         ),
         trackColor: WidgetStateProperty.resolveWith<Color>(
           (Set<WidgetState> states) => states.contains(WidgetState.selected)
-              ? accent.primary.withValues(alpha: 0.30)
+              ? accent.primary.withValues(alpha: 0.44)
               : SaxifyColors.surfaceAlt,
         ),
         trackOutlineColor: const WidgetStatePropertyAll<Color>(

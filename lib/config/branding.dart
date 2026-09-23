@@ -17,8 +17,8 @@ class SaxifyBranding {
   static const String fileSuffix = '_saxify';
   static const String author = 'Siddharth IfallertzIa';
   static const String contactEmail = 'dastaanenajdik@gmail.com';
-  static const String versionLabel = '2.0.0';
+  static const String versionLabel = '2.1.0';
   static const String tagline = 'Stream beyond limits';
-  static const String userAgent = 'Saxify/2.0 (Flutter)';
+  static const String userAgent = 'Saxify/2.1 (Flutter)';
   static const String packageName = 'com.saxify.app';
 }

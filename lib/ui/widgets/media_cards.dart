@@ -8,6 +8,7 @@ import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
 import 'artwork.dart';
+import 'song_download_button.dart';
 
 /// Square grid card used by "Made for you" / "Recommended for you".
 class SongCard extends StatelessWidget {
@@ -53,6 +54,11 @@ class SongCard extends StatelessWidget {
                     right: 8,
                     bottom: 8,
                     child: _PlayFab(accent: accent, active: isCurrent),
+                  ),
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: SongDownloadButton(song: song, size: 34, floating: true),
                   ),
                   if (song.duration != null)
                     Positioned(
@@ -278,7 +284,114 @@ class ArtistBubble extends StatelessWidget {
   }
 }
 
-/// Mood & genre pill — tapping runs its query through search.
+/// Solid, Spotify-style mood and genre tiles. Each tile is a real search action.
+class MoodGenreGrid extends StatelessWidget {
+  const MoodGenreGrid({
+    super.key,
+    required this.items,
+    required this.onSelected,
+    this.horizontalPadding = 20,
+  });
+
+  final List<(String, String)> items;
+  final ValueChanged<String> onSelected;
+  final double horizontalPadding;
+
+  static const List<IconData> _icons = <IconData>[
+    Icons.movie_creation_outlined,
+    Icons.graphic_eq_rounded,
+    Icons.album_outlined,
+    Icons.headphones_rounded,
+    Icons.auto_awesome_rounded,
+    Icons.fitness_center_rounded,
+    Icons.spa_rounded,
+    Icons.nightlight_round,
+    Icons.favorite_rounded,
+    Icons.self_improvement_rounded,
+    Icons.mic_rounded,
+    Icons.record_voice_over_rounded,
+    Icons.history_rounded,
+    Icons.piano_rounded,
+    Icons.celebration_rounded,
+    Icons.psychology_rounded,
+    Icons.directions_car_rounded,
+    Icons.music_note_rounded,
+    Icons.music_note_rounded,
+    Icons.music_note_rounded,
+    Icons.music_note_rounded,
+    Icons.self_improvement_rounded,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final SaxifyAccent accent = context.accent;
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final int columns = constraints.maxWidth >= 760
+            ? 4
+            : constraints.maxWidth >= 520
+                ? 3
+                : 2;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+          itemCount: items.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisExtent: 54,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemBuilder: (BuildContext context, int index) {
+            final (String, String) item = items[index];
+            final BorderRadius radius = BorderRadius.circular(14);
+            return Material(
+              color: accent.primary,
+              borderRadius: radius,
+              child: InkWell(
+                onTap: () => onSelected(item.$2),
+                borderRadius: radius,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: radius,
+                    border: Border.all(
+                      color: accent.secondary.withValues(alpha: 0.65),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      Icon(_icons[index % _icons.length], size: 18, color: Colors.black),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          item.$1,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_outward_rounded, size: 15, color: Colors.black54),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Compact version used in small secondary shelves.
 class MoodChip extends StatelessWidget {
   const MoodChip({
     super.key,
@@ -295,35 +408,26 @@ class MoodChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final SaxifyAccent accent = context.accent;
     return Material(
-      color: Colors.transparent,
+      color: accent.primary,
+      borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
-            gradient: LinearGradient(
-              colors: <Color>[
-                accent.primary.withValues(alpha: 0.16),
-                accent.secondary.withValues(alpha: 0.06),
-              ],
-            ),
-            border: Border.all(color: accent.primary.withValues(alpha: 0.30)),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               if (icon != null) ...<Widget>[
-                Icon(icon, size: 15, color: accent.primary),
+                Icon(icon, size: 15, color: Colors.black),
                 const SizedBox(width: 7),
               ],
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: accent.primary,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
                 ),
               ),
             ],

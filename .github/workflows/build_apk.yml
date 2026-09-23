@@ -2,7 +2,7 @@ name: Build Flutter APK
 
 on:
   push:
-    branches: [ main, master, arena/01a0bf2d-testing ]
+    branches: [ main, master, arena/01a0cc83-saxify-v1 ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -126,3 +126,44 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments" \
             -d @payload.json | head -c 400
+
+  # A release is created only after the complete build job succeeds on main.
+  # PR and feature-branch builds produce artifacts but never publish releases.
+  release:
+    name: Publish versioned APK release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download release APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release
+          path: release
+
+      - name: Read app version
+        id: version
+        shell: bash
+        run: |
+          RAW_VERSION="$(awk '/^version:/ { sub(/^version:[[:space:]]*/, ""); print; exit }' pubspec.yaml)"
+          VERSION="${RAW_VERSION%%+*}"
+          if [[ -z "$VERSION" ]]; then
+            echo "pubspec.yaml is missing a version" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Saxify v${{ steps.version.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          files: release/app-release.apk
+          fail_on_unmatched_files: true
+          make_latest: true

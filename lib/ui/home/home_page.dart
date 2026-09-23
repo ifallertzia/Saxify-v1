@@ -54,14 +54,17 @@ class _HomePageState extends State<HomePage> {
     final HomeCatalog catalog = context.watch<HomeCatalog>();
     final SettingsService settings = context.watch<SettingsService>();
 
-    return RefreshIndicator(
-      color: context.accent.primary,
-      backgroundColor: SaxifyColors.surface,
-      onRefresh: () => catalog.load(force: true),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 40),
-        children: <Widget>[
+    return SafeArea(
+      top: true,
+      bottom: false,
+      child: RefreshIndicator(
+        color: context.accent.primary,
+        backgroundColor: SaxifyColors.surface,
+        onRefresh: () => catalog.load(force: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 40),
+          children: <Widget>[
           _TopBar(onSettings: () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(
@@ -120,8 +123,9 @@ class _HomePageState extends State<HomePage> {
                 title: 'Trending now',
                 subtitle: 'The most-played tracks this week',
                 actionLabel: 'Show all',
-                onAction: () =>
-                    context.read<ShellController>().goSearch('top hits'),
+                onAction: () => context
+                    .read<ShellController>()
+                    .goSearch('Hindi top hit songs India 2026'),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -145,8 +149,9 @@ class _HomePageState extends State<HomePage> {
               title: 'New releases',
               subtitle: 'Fresh albums & singles',
               actionLabel: 'Browse',
-              onAction: () =>
-                  context.read<ShellController>().goSearch('new songs 2026'),
+              onAction: () => context
+                  .read<ShellController>()
+                  .goSearch('latest Hindi Bollywood songs 2026'),
             ),
             HorizontalRail(
               height: 226,
@@ -222,7 +227,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 14),
             const _WhatsNewCard(),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -285,12 +290,12 @@ class _Hero extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: <Color>[
-              accent.primary.withValues(alpha: 0.26),
-              accent.secondary.withValues(alpha: 0.10),
+              accent.primary.withValues(alpha: 0.44),
+              accent.secondary.withValues(alpha: 0.22),
               SaxifyColors.card,
             ],
           ),
-          border: Border.all(color: accent.primary.withValues(alpha: 0.22)),
+          border: Border.all(color: accent.primary.withValues(alpha: 0.48)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,17 +361,19 @@ class _Hero extends StatelessWidget {
                     label: "Play today's mix",
                     icon: Icons.play_arrow_rounded,
                     compact: true,
-                    onPressed: () {
+                    onPressed: () async {
+                      await catalog.load();
+                      if (!context.mounted) return;
                       final List<Song> mix = <Song>[
                         ...catalog.madeForYou,
                         ...catalog.trending,
                         ...catalog.recommended,
                       ];
                       if (mix.isEmpty) {
-                        context.read<ShellController>().goSearch();
+                        context.read<ShellController>().goSearch('Hindi trending songs India');
                         return;
                       }
-                      playback.playQueue(mix, startIndex: 0);
+                      await playback.playQueue(mix, startIndex: 0);
                     },
                   ),
                 ),
@@ -393,35 +400,11 @@ class _Hero extends StatelessWidget {
 class _MoodGenresRow extends StatelessWidget {
   const _MoodGenresRow();
 
-  static const List<IconData> _icons = <IconData>[
-    Icons.auto_awesome_rounded,
-    Icons.nightlight_round,
-    Icons.fitness_center_rounded,
-    Icons.spa_rounded,
-    Icons.piano_rounded,
-    Icons.celebration_rounded,
-    Icons.psychology_rounded,
-    Icons.volunteer_activism_rounded,
-  ];
-
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: <Widget>[
-          for (int i = 0; i < HomeCatalog.moodGenres.length; i++)
-            MoodChip(
-              label: HomeCatalog.moodGenres[i].$1,
-              icon: _icons[i % _icons.length],
-              onTap: () => context
-                  .read<ShellController>()
-                  .goSearch(HomeCatalog.moodGenres[i].$2),
-            ),
-        ],
-      ),
+    return MoodGenreGrid(
+      items: HomeCatalog.moodGenres,
+      onSelected: (String query) => context.read<ShellController>().goSearch(query),
     );
   }
 }
@@ -501,14 +484,16 @@ class _WhatsNewCard extends StatelessWidget {
   const _WhatsNewCard();
 
   static const List<String> _notes = <String>[
-    'Songs now play one after another — when a song ends, a similar song starts on its own.',
-    'Playlists, Liked Songs and search results keep rolling to the next song.',
-    'The first song you tap starts right away.',
-    'Like ❤ works — liked songs are saved and show up in Your Library.',
-    '“Add to playlist” works — tap a playlist and the song goes straight in.',
-    'Listening history updates while you play, so the History tab is never stale.',
-    'Song errors skip ahead to a similar track instead of stopping playback.',
-    'Settings now has “Instructions to play in background”.',
+    'Home shelves now load automatically when the app opens; no pull-to-refresh needed.',
+    'Search, moods and trending stations now prefer Hindi/Indian songs and filter out non-music videos.',
+    'Mood & genre stations now include Bollywood, devotional, workout, Osho meditation, regional hits and more.',
+    'Song rows now have a working download button with live progress and an offline Your Downloads library.',
+    'Eligible public YouTube links can now be sent to the configured Saxify Downloader backend; video-only, video + audio and audio choices are available.',
+    'Artist pages fall back to Hindi-first music results when a channel has no usable upload feed.',
+    'The mini-player stops showing a spinner once playback actually starts; background playback recovery is improved.',
+    'Your name is requested on first launch, and local library JSON backup/import is now easier to find.',
+    'Local JSON backups are distinct from server-backed playlist codes; cloud restore requires the matching Render routes.',
+    'Settings contact/report now opens a prefilled email draft with useful report categories and examples.'
   ];
 
   @override
@@ -552,7 +537,7 @@ class _WhatsNewCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   const Text(
-                    'Playback, likes and playlists are all fixed',
+                    'Discover Hindi-first music, download for offline listening, and more',
                     style:
                         TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
                   ),
@@ -571,7 +556,7 @@ class _WhatsNewCard extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text('Minor update 1.1',
+        title: Text('Saxify 2.1.0',
             style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
         content: SizedBox(
           width: double.maxFinite,

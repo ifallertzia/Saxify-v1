@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/branding.dart';
 import '../../core/services/library_service.dart';
@@ -64,22 +64,6 @@ class SettingsPage extends StatelessWidget {
                     title: 'Display name',
                     initial: settings.displayName,
                     onSave: settings.setDisplayName,
-                  ),
-                ),
-                _SettingTile(
-                  icon: Icons.mail_outline_rounded,
-                  title: 'Email',
-                  subtitle: 'For sync and backup reminders',
-                  trailing: Text(
-                    settings.email,
-                    style: const TextStyle(
-                        fontSize: 13, color: SaxifyColors.textSecondary),
-                  ),
-                  onTap: () => _editText(
-                    context,
-                    title: 'Email',
-                    initial: settings.email,
-                    onSave: settings.setEmail,
                   ),
                 ),
                 _SettingTile(
@@ -346,6 +330,158 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
+Future<void> _showReportDialog(BuildContext context) async {
+  final TextEditingController details = TextEditingController();
+  const List<String> categories = <String>[
+    'Playback / background',
+    'Search / song results',
+    'Downloads',
+    'Playlist / backup',
+    'UI / layout',
+    'Suggestion',
+  ];
+  const List<(String, String)> examples = <(String, String)>[
+    ('Song stopped', 'A song stopped while Saxify was in the background.'),
+    ('Wrong results', 'Search or a mood showed non-song / unrelated results.'),
+    ('Download failed', 'A download did not start or did not finish.'),
+    ('Playlist restore', 'Playlist code or library JSON could not be restored.'),
+    ('UI overlap', 'Some buttons or text overlap on my phone.'),
+    ('Suggestion', 'I would like to suggest this feature: '),
+  ];
+  String category = categories.first;
+
+  String? action;
+  String reportText = '';
+  try {
+    action = await showDialog<String>(
+      context: context,
+      builder: (BuildContext dialog) => StatefulBuilder(
+        builder: (BuildContext dialog, StateSetter setDialogState) => AlertDialog(
+          title: Text('Contact / Report',
+              style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Choose an example below or write your own. Send opens Gmail or your email app with a ready-to-send draft.',
+                  style: TextStyle(fontSize: 12.5, height: 1.45, color: SaxifyColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: category,
+                  decoration: const InputDecoration(labelText: 'What is this about?'),
+                  items: <DropdownMenuItem<String>>[
+                    for (final String item in categories)
+                      DropdownMenuItem<String>(value: item, child: Text(item)),
+                  ],
+                  onChanged: (String? value) {
+                    if (value != null) setDialogState(() => category = value);
+                  },
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: <Widget>[
+                    for (final (String, String) example in examples)
+                      ActionChip(
+                        label: Text(example.$1, style: const TextStyle(fontSize: 11)),
+                        onPressed: () {
+                          setDialogState(() {
+                            details.text = example.$2;
+                            details.selection = TextSelection.collapsed(offset: details.text.length);
+                          });
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: details,
+                  minLines: 3,
+                  maxLines: 6,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    labelText: 'Details or your suggestion',
+                    hintText: 'What happened? Phone model is helpful, but optional.',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialog).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton.icon(
+              onPressed: () => Navigator.of(dialog).pop('send'),
+              icon: const Icon(Icons.send_rounded, size: 17),
+              label: const Text('Open email'),
+            ),
+          ],
+        ),
+      ),
+    );
+    reportText = details.text;
+  } finally {
+    details.dispose();
+  }
+
+  if (action == 'send' && context.mounted) {
+    await _launchSupportEmail(context, category, reportText);
+  }
+}
+
+Future<void> _launchSupportEmail(
+  BuildContext context,
+  String category,
+  String details,
+) async {
+  final String subject = 'Saxify feedback: $category';
+  final String body = <String>[
+    'Hi Saxify team,',
+    '',
+    'Topic: $category',
+    '',
+    details.trim().isEmpty ? 'Please describe the issue or suggestion here.' : details.trim(),
+    '',
+    'Phone model / Android version (optional):',
+  ].join('\n');
+  final Uri mailto = Uri(
+    scheme: 'mailto',
+    path: SaxifyBranding.contactEmail,
+    queryParameters: <String, String>{'subject': subject, 'body': body},
+  );
+  bool opened = false;
+  try {
+    opened = await launchUrl(mailto, mode: LaunchMode.externalApplication);
+  } catch (_) {}
+  if (!opened) {
+    final Uri gmail = Uri.https('mail.google.com', '/mail/', <String, String>{
+      'view': 'cm',
+      'fs': '1',
+      'to': SaxifyBranding.contactEmail,
+      'su': subject,
+      'body': body,
+    });
+    try {
+      opened = await launchUrl(gmail, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+  }
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(opened
+          ? 'Email draft opened. Review it and press Send.'
+          : 'Could not open an email app. Install Gmail or another mail app and try again.'),
+    ),
+  );
+}
+
 // --------------------------------------------------------------------- theme
 class _ThemePanel extends StatefulWidget {
   const _ThemePanel();
@@ -490,7 +626,7 @@ class _AccentSwatch extends StatelessWidget {
               width: selected ? 1.6 : 1,
             ),
             color: selected
-                ? accent.primary.withValues(alpha: 0.10)
+                ? accent.primary.withValues(alpha: 0.28)
                 : SaxifyColors.surfaceAlt,
           ),
           child: Column(
@@ -630,17 +766,10 @@ class _AboutCard extends StatelessWidget {
           _SettingTile(
             icon: Icons.mail_outline_rounded,
             title: 'Contact / Report a problem',
-            subtitle: 'dastaanenajdik@gmail.com',
+            subtitle: 'Open email with an issue example or suggestion',
             trailing: const Icon(Icons.chevron_right_rounded,
                 color: SaxifyColors.textFaint),
-            onTap: () async {
-              await Clipboard.setData(
-                  const ClipboardData(text: 'dastaanenajdik@gmail.com'));
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Support email copied')),
-              );
-            },
+            onTap: () => _showReportDialog(context),
           ),
         ],
       ),
@@ -712,37 +841,50 @@ class _SettingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NeonCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      onTap: onTap,
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              color: context.accent.primary.withValues(alpha: 0.14),
+    final SaxifyAccent accent = context.accent;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: NeonCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        onTap: onTap,
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: accent.primary.withValues(alpha: 0.28),
+                border: Border.all(color: accent.primary.withValues(alpha: 0.35)),
+              ),
+              child: Icon(icon, size: 18, color: accent.primary),
             ),
-            child: Icon(icon, size: 18, color: context.accent.primary),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 13.5, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(subtitle,
-                    style: const TextStyle(
-                        fontSize: 11.5, color: SaxifyColors.textMuted)),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted)),
+                ],
+              ),
             ),
-          ),
-          if (trailing != null) trailing!,
-        ],
+            if (trailing != null) ...<Widget>[
+              const SizedBox(width: 6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 76),
+                child: trailing!,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -765,36 +907,44 @@ class _SwitchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NeonCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              color: context.accent.primary.withValues(alpha: 0.14),
+    final SaxifyAccent accent = context.accent;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: NeonCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: accent.primary.withValues(alpha: 0.28),
+                border: Border.all(color: accent.primary.withValues(alpha: 0.35)),
+              ),
+              child: Icon(icon, size: 18, color: accent.primary),
             ),
-            child: Icon(icon, size: 18, color: context.accent.primary),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 13.5, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(subtitle,
-                    style: const TextStyle(
-                        fontSize: 11.5, color: SaxifyColors.textMuted)),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted)),
+                ],
+              ),
             ),
-          ),
-          Switch(value: value, onChanged: onChanged),
-        ],
+            const SizedBox(width: 6),
+            Switch(value: value, onChanged: onChanged),
+          ],
+        ),
       ),
     );
   }
@@ -820,57 +970,64 @@ class _ChoiceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SaxifyAccent accent = context.accent;
-    return NeonCard(
-      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: accent.primary.withValues(alpha: 0.14),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: NeonCard(
+        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: accent.primary.withValues(alpha: 0.28),
+                    border: Border.all(color: accent.primary.withValues(alpha: 0.35)),
+                  ),
+                  child: Icon(icon, size: 18, color: accent.primary),
                 ),
-                child: Icon(icon, size: 18, color: accent.primary),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 13.5, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text(subtitle,
-                        style: const TextStyle(
-                            fontSize: 11.5, color: SaxifyColors.textMuted)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            children: <Widget>[
-              for (final String choice in choices)
-                ChoiceChip(
-                  label: Text(choice.toUpperCase()),
-                  selected: choice == value,
-                  onSelected: (_) => onChanged(choice),
-                  labelStyle: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: choice == value ? accent.primary : SaxifyColors.textMuted,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text(subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted)),
+                    ],
                   ),
                 ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: <Widget>[
+                for (final String choice in choices)
+                  ChoiceChip(
+                    label: Text(choice.toUpperCase()),
+                    selected: choice == value,
+                    onSelected: (_) => onChanged(choice),
+                    labelStyle: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: choice == value ? accent.primary : SaxifyColors.textMuted,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

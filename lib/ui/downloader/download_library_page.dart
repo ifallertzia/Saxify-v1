@@ -127,6 +127,7 @@ class _DownloadLibraryPageState extends State<DownloadLibraryPage> {
             item.kind == DownloadKind.audio ? 'audio/mpeg' : 'video/mp4',
           );
         }
+        return;
       case 'share':
         if (item.path != null) {
           await NativeBridge.shareFile(
@@ -136,22 +137,27 @@ class _DownloadLibraryPageState extends State<DownloadLibraryPage> {
             title: item.title,
           );
         }
+        return;
       case 'again':
         downloader.setUrl(item.url);
         await downloader.fetch();
         await downloader.download(kind: item.kind, best: true);
+        return;
       case 'copy':
         await Clipboard.setData(ClipboardData(text: item.url));
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('URL copied')));
         }
+        return;
       case 'post':
         final Uri? uri = Uri.tryParse(item.url);
         if (uri != null) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
+        return;
       case 'delete':
         await downloader.deleteRecord(item);
+        return;
     }
   }
 }
