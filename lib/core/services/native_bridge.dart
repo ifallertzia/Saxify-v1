@@ -27,7 +27,7 @@ class NativeBridge {
         );
       }
     } catch (e) {
-      debugPrint('[Saxify][Boot] native bootState failed: $e');
+      debugPrint('[IfallMusic][Boot] native bootState failed: $e');
     }
     return const BootSnapshot(safeMode: false, fails: 0, sdk: 0);
   }
@@ -39,7 +39,7 @@ class NativeBridge {
           .invokeMethod<void>('markLaunchSuccess')
           .timeout(const Duration(seconds: 1));
     } catch (e) {
-      debugPrint('[Saxify][Boot] markLaunchSuccess failed: $e');
+      debugPrint('[IfallMusic][Boot] markLaunchSuccess failed: $e');
     }
   }
 
@@ -50,7 +50,7 @@ class NativeBridge {
           .invokeMethod<void>('clearFlutterPrefs')
           .timeout(const Duration(seconds: 2));
     } catch (e) {
-      debugPrint('[Saxify][Boot] clearFlutterPrefs failed: $e');
+      debugPrint('[IfallMusic][Boot] clearFlutterPrefs failed: $e');
     }
   }
 
@@ -101,7 +101,7 @@ class NativeBridge {
           .map((Map item) => SavedFile.fromMap(item.cast<Object?, Object?>()))
           .toList();
     } catch (e) {
-      debugPrint('[Saxify][Storage] listDownloads failed: $e');
+      debugPrint('[IfallMusic][Storage] listDownloads failed: $e');
       return <SavedFile>[];
     }
   }
@@ -138,7 +138,7 @@ class NativeBridge {
       if (raw is! Map) return null;
       return EqualizerInfo.fromMap(raw.cast<Object?, Object?>());
     } catch (e) {
-      debugPrint('[Saxify][EQ] init failed: $e');
+      debugPrint('[IfallMusic][EQ] init failed: $e');
       return null;
     }
   }
@@ -169,6 +169,43 @@ class NativeBridge {
     try {
       await _channel.invokeMethod<void>('eqRelease');
     } catch (_) {}
+  }
+
+  // ------------------------------------------------------- spatial audio (8D)
+  /// Pushes the live 8D parameters to the native engine.
+  ///
+  /// Android attaches a [Virtualizer] (depth/width) and an
+  /// [EnvironmentalReverb] (room) to the running audio session; the orbit
+  /// itself is driven by the LFO inside `SpatialAudioProcessor.kt`.
+  static Future<bool> spatialApply({
+    required double rotationHz,
+    required double depth,
+    required double reverb,
+    required double width,
+  }) async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+    try {
+      final Object? raw =
+          await _channel.invokeMethod<Object>('spatialApply', <String, Object>{
+        'rotationHz': rotationHz,
+        'depth': depth,
+        'reverb': reverb,
+        'width': width,
+      });
+      return raw == true;
+    } catch (e) {
+      debugPrint('[IfallMusic][Spatial] apply failed: $e');
+      return false;
+    }
+  }
+
+  static Future<void> spatialDisable() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('spatialDisable');
+    } catch (e) {
+      debugPrint('[IfallMusic][Spatial] disable failed: $e');
+    }
   }
 }
 

@@ -5,7 +5,9 @@ import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.media.audiofx.EnvironmentalReverb
 import android.media.audiofx.Equalizer
+import android.media.audiofx.Virtualizer
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -24,6 +26,11 @@ import kotlin.concurrent.thread
 class SaxifyBridge(private val activity: Activity) {
     private var equalizer: Equalizer? = null
     private var sessionId: Int = 0
+
+    // ---- 8D spatial audio (Virtualizer + reverb on the live output) --------
+    private var virtualizer: Virtualizer? = null
+    private var reverb: EnvironmentalReverb? = null
+    private val spatialProcessor = SpatialAudioProcessor()
 
     fun handle(call: MethodCall, result: MethodChannel.Result) {
         try {
@@ -80,6 +87,18 @@ class SaxifyBridge(private val activity: Activity) {
                     releaseEq()
                     result.success(null)
                 }
+                "spatialApply" -> result.success(
+                    spatialApply(
+                        rotationHz = (call.argument<Double>("rotationHz") ?: 0.12),
+                        depth = (call.argument<Double>("depth") ?: 0.9),
+                        reverb = (call.argument<Double>("reverb") ?: 0.3),
+                        width = (call.argument<Double>("width") ?: 0.35),
+                    )
+                )
+                "spatialDisable" -> {
+                    releaseSpatial()
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         } catch (e: Exception) {
@@ -117,7 +136,7 @@ class SaxifyBridge(private val activity: Activity) {
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
             put(MediaStore.MediaColumns.MIME_TYPE, mime)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Saxify")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/IfallMusic")
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
@@ -298,6 +317,89 @@ class SaxifyBridge(private val activity: Activity) {
             }
         }
         return false
+    }
+
+    /**
+     * Applies the live 8D parameters.
+     *
+     * Two layers run together:
+     *  * [SpatialAudioProcessor] keeps the musical parameters (orbit speed,
+     *    depth, reverb, width) and is the engine used when the app drives the
+     *    audio pipeline itself (Media3 AudioProcessor / Oboe).
+     *  * On the stock player we attach a [Virtualizer] for the "around your
+     *    head" width and an [EnvironmentalReverb] for the room. Both are
+     *    optional system effects: if the device refuses them we simply report
+     *    `false` and playback is untouched.
+     */
+    private fun spatialApply(rotationHz: Double, depth: Double, reverb: Double, width: Double): Boolean {
+        spatialProcessor.rotationHz = rotationHz
+        spatialProcessor.depth = depth
+        spatialProcessor.reverbMix = reverb
+        spatialProcessor.width = width
+        var applied = false
+        try {
+            if (virtualizer == null) {
+                virtualizer = Virtualizer(0, audioSessionId()).apply { enabled = true }
+            }
+            virtualizer?.apply {
+                setStrength((depth * 1000).toInt().coerceIn(0, 1000).toShort())
+                enabled = true
+            }
+            applied = true
+        } catch (_: Exception) {
+            virtualizer = null
+        }
+        try {
+            if (reverb == 0.0) {
+                // `reverb` is also the Double parameter here — the field needs
+                // the explicit receiver.
+                this.reverb?.enabled = false
+            } else {
+                if (this.reverb == null) {
+                    this.reverb = EnvironmentalReverb(0, audioSessionId()).apply { enabled = true }
+                }
+                this.reverb?.apply {
+                    roomLevel = (-1200 + (reverb * 1200).toInt()).toShort()
+                    roomHFLevel = -1500
+                    decayTime = (600 + (reverb * 2400).toInt())
+                    reflectionsLevel = (-2500 + (reverb * 1500).toInt()).toShort()
+                    reflectionsDelay = 20
+                    reverbLevel = (-2500 + (depth * 2200).toInt()).toShort()
+                    reverbDelay = 40
+                    diffusion = 1000
+                    density = 1000
+                    enabled = true
+                }
+                applied = true
+            }
+        } catch (_: Exception) {
+            this.reverb = null
+        }
+        return applied
+    }
+
+    /**
+     * The audio session the effects should attach to. `sessionId` is filled by
+     * [eqInit]; when the system equalizer was never opened we fall back to the
+     * global output mix (session 0), which is what Android documents for
+     * "apply to everything the device is playing".
+     */
+    private fun audioSessionId(): Int = if (sessionId > 0) sessionId else 0
+
+    private fun releaseSpatial() {
+        try {
+            virtualizer?.enabled = false
+            virtualizer?.release()
+        } catch (_: Exception) {
+        }
+        try {
+            reverb?.enabled = false
+            reverb?.release()
+        } catch (_: Exception) {
+        }
+        virtualizer = null
+        reverb = null
+        spatialProcessor.reset()
     }
 
     private fun releaseEq() {

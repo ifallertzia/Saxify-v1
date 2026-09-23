@@ -40,7 +40,7 @@ class AlbumCard {
   }
 
   /// Accepts both `ytq-<b64>` and a bare base64 payload. Returns null when the
-  /// payload is not a Saxify album id.
+  /// payload is not an IfallMusic album id.
   static AlbumCard? decode(String raw) {
     String payload = raw.trim();
     if (payload.startsWith('ytq-')) payload = payload.substring(4);

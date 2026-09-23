@@ -44,7 +44,7 @@ Future<void> sharePlaylistCode(BuildContext context, Playlist playlist) async {
 
 Future<void> shareAllPlaylistCodes(BuildContext context) async {
   final LibraryService library = context.read<LibraryService>();
-  final TextEditingController name = TextEditingController(text: 'My Saxify library');
+  final TextEditingController name = TextEditingController(text: 'My IfallMusic library');
   final String? title = await showDialog<String>(
     context: context,
     builder: (BuildContext dialog) => AlertDialog(
@@ -59,7 +59,7 @@ Future<void> shareAllPlaylistCodes(BuildContext context) async {
   if (title == null || !context.mounted) return;
   final String? code = await PlaylistSyncService.shareAllPlaylists(
     library.playlists.map((Playlist p) => p.toJson()).toList(),
-    title: title.trim().isEmpty ? 'Saxify library' : title.trim(),
+    title: title.trim().isEmpty ? 'IfallMusic library' : title.trim(),
   );
   if (!context.mounted) return;
   if (code != null) {

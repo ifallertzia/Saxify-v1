@@ -21,14 +21,15 @@ import 'core/services/playlist_sync_service.dart';
 import 'core/services/recommendation_service.dart';
 import 'core/services/recommendation_worker.dart';
 import 'core/services/settings_service.dart';
+import 'core/services/spatial_audio_service.dart';
 import 'core/services/youtube_service.dart';
+import 'core/theme/glass.dart';
+import 'core/theme/saxify_accents.dart';
 import 'core/theme/saxify_theme.dart';
 import 'core/theme/theme_controller.dart';
-import 'downloader/download_history_store.dart';
-import 'downloader/universal_downloader.dart';
-import 'ui/shell/shell_controller.dart';
-import 'ui/shell/saxify_shell.dart';
 import 'ui/onboarding/welcome_page.dart';
+import 'ui/shell/saxify_shell.dart';
+import 'ui/shell/shell_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,13 +51,13 @@ Future<void> main() async {
       BootLog.write('init failed: $error\n$stack');
     }
     if (boot == null) {
-      runApp(const SaxifyRecoveryApp());
+      runApp(const IfallRecoveryApp());
       return;
     }
-    runApp(SaxifyApp(boot: boot));
+    runApp(IfallMusicApp(boot: boot));
   }, (Object error, StackTrace stack) {
     BootLog.write('Zone error: $error\n$stack');
-    runApp(const SaxifyRecoveryApp());
+    runApp(const IfallRecoveryApp());
   });
 }
 
@@ -71,8 +72,8 @@ Future<AppBoot> _initializeApp() async {
     BootLog.write('safe mode — skipping notification and recommendation init');
   }
 
-  final SharedPreferences prefs = await SharedPreferences.getInstance()
-      .timeout(const Duration(seconds: 3));
+  final SharedPreferences prefs =
+      await SharedPreferences.getInstance().timeout(const Duration(seconds: 3));
   await _migrateLegacyKeys(prefs);
 
   // The notification/media session is what keeps Android audio alive after
@@ -94,10 +95,7 @@ Future<AppBoot> _initializeApp() async {
   final RecommendationService recommendations = RecommendationService(youtube: youtube);
   final ArtistService artists = ArtistService(youtube: youtube);
   final MusicDownloadService musicDownloads = MusicDownloadService(prefs: prefs);
-  final UniversalDownloader downloader = UniversalDownloader(
-    history: DownloadHistoryStore(prefs),
-  );
-  downloader.api.baseUrl = settings.downloaderBaseUrl;
+  final SpatialAudioService spatial = SpatialAudioService(settings);
 
   playback.onTrackStarted = (Song song) {
     recommendations.notePlay(song);
@@ -113,7 +111,7 @@ Future<AppBoot> _initializeApp() async {
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
       statusBarBrightness: Brightness.dark,
-      systemNavigationBarColor: SaxifyColors.surface,
+      systemNavigationBarColor: Colors.black,
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
@@ -126,7 +124,7 @@ Future<AppBoot> _initializeApp() async {
     recommendations: recommendations,
     artists: artists,
     musicDownloads: musicDownloads,
-    downloader: downloader,
+    spatial: spatial,
     safeMode: native.safeMode,
   );
 }
@@ -163,7 +161,7 @@ class AppBoot {
     required this.recommendations,
     required this.artists,
     required this.musicDownloads,
-    required this.downloader,
+    required this.spatial,
     required this.safeMode,
   });
 
@@ -174,20 +172,20 @@ class AppBoot {
   final RecommendationService recommendations;
   final ArtistService artists;
   final MusicDownloadService musicDownloads;
-  final UniversalDownloader downloader;
+  final SpatialAudioService spatial;
   final bool safeMode;
 }
 
-class SaxifyApp extends StatefulWidget {
-  const SaxifyApp({super.key, required this.boot});
+class IfallMusicApp extends StatefulWidget {
+  const IfallMusicApp({super.key, required this.boot});
 
   final AppBoot boot;
 
   @override
-  State<SaxifyApp> createState() => _SaxifyAppState();
+  State<IfallMusicApp> createState() => _IfallMusicAppState();
 }
 
-class _SaxifyAppState extends State<SaxifyApp> {
+class _IfallMusicAppState extends State<IfallMusicApp> {
   Timer? _syncTimer;
 
   @override
@@ -242,12 +240,16 @@ class _SaxifyAppState extends State<SaxifyApp> {
         ChangeNotifierProvider<PlaybackService>.value(value: boot.playback),
         ChangeNotifierProvider<RecommendationService>.value(value: boot.recommendations),
         ChangeNotifierProvider<MusicDownloadService>.value(value: boot.musicDownloads),
-        ChangeNotifierProvider<UniversalDownloader>.value(value: boot.downloader),
+        ChangeNotifierProvider<SpatialAudioService>.value(value: boot.spatial),
         ChangeNotifierProvider<ThemeController>(
           create: (_) => ThemeController(boot.settings),
         ),
         ChangeNotifierProvider<HomeCatalog>(
-          create: (_) => HomeCatalog(youtube: boot.youtube, library: boot.library),
+          create: (_) => HomeCatalog(
+            youtube: boot.youtube,
+            library: boot.library,
+            artists: boot.artists,
+          ),
         ),
         ChangeNotifierProvider<ShellController>(
           create: (_) => ShellController(),
@@ -259,7 +261,7 @@ class _SaxifyAppState extends State<SaxifyApp> {
           value: boot.artists,
           child: Provider<bool>.value(
             value: boot.safeMode,
-            child: const _SaxifyRoot(),
+            child: const _IfallRoot(),
           ),
         ),
       ),
@@ -267,8 +269,8 @@ class _SaxifyAppState extends State<SaxifyApp> {
   }
 }
 
-class SaxifyProfileGate extends StatelessWidget {
-  const SaxifyProfileGate({super.key});
+class IfallProfileGate extends StatelessWidget {
+  const IfallProfileGate({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -280,31 +282,42 @@ class SaxifyProfileGate extends StatelessWidget {
   }
 }
 
-class _SaxifyRoot extends StatelessWidget {
-  const _SaxifyRoot();
+class _IfallRoot extends StatelessWidget {
+  const _IfallRoot();
 
   @override
   Widget build(BuildContext context) {
     final ThemeController theme = context.watch<ThemeController>();
     return MaterialApp(
-      title: SaxifyBranding.appName,
+      title: IfallBranding.appName,
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       theme: SaxifyTheme.build(theme.accent),
       darkTheme: SaxifyTheme.build(theme.accent),
-      home: const SaxifyProfileGate(),
+      builder: (BuildContext context, Widget? child) {
+        // Apple-like restraint on huge system font scales: the layout keeps its
+        // rhythm and text stays readable instead of overflowing.
+        final MediaQueryData media = MediaQuery.of(context);
+        final double scale = media.textScaler.scale(1).clamp(1.0, 1.3);
+        return MediaQuery(
+          data: media.copyWith(textScaler: TextScaler.linear(scale)),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+      home: const IfallProfileGate(),
     );
   }
 }
 
-class SaxifyRecoveryApp extends StatelessWidget {
-  const SaxifyRecoveryApp({super.key});
+/// Shown only when startup could not finish — black, quiet, one action.
+class IfallRecoveryApp extends StatelessWidget {
+  const IfallRecoveryApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
+      theme: SaxifyTheme.build(SaxifyAccents.violetPulse),
       home: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
@@ -313,31 +326,34 @@ class SaxifyRecoveryApp extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Image.asset(SaxifyBranding.logoAsset, width: 96, height: 96),
-                const SizedBox(height: 18),
-                const Text(
-                  'Saxify could not finish starting.',
+                Image.asset(IfallBranding.logoAsset, width: 96, height: 96),
+                const SizedBox(height: 20),
+                Text(
+                  'IfallMusic could not finish starting.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: SaxifyTheme.appleFont(size: 19, weight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Local data reset — playlists cloud se restore honge.',
+                  'Reset the local cache and try again. Your liked songs and playlists stay on this device.',
                   textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: SaxifyColors.textMuted, height: 1.5),
                 ),
-                const SizedBox(height: 20),
-                FilledButton(
+                const SizedBox(height: 22),
+                GlassButton(
+                  label: 'Reset and retry',
+                  icon: Icons.refresh_rounded,
+                  expand: true,
                   onPressed: () async {
                     await NativeBridge.clearLocalPrefs();
                     try {
                       final AppBoot boot =
                           await _initializeApp().timeout(const Duration(seconds: 5));
-                      runApp(SaxifyApp(boot: boot));
+                      runApp(IfallMusicApp(boot: boot));
                     } catch (error) {
                       BootLog.write('retry failed: $error');
                     }
                   },
-                  child: const Text('Reset local data and retry'),
                 ),
               ],
             ),

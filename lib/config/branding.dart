@@ -1,9 +1,10 @@
-/// Single source of truth for Saxify identity.
+/// Single source of truth for the IfallMusic identity.
 ///
-/// Logo contract: drop a transparent 512×512 PNG at [logoAsset] and run
-/// `flutter pub get`. Do not change the filename.
-class SaxifyBranding {
-  const SaxifyBranding._();
+/// The app was previously branded Saxify. Every user-visible name, folder and
+/// tagline now comes from here, so **IfallMusic wins everywhere** — the shell,
+/// the notification, the download folder, the store label and the About card.
+class IfallBranding {
+  const IfallBranding._();
 
   static const double logoWidth = 512;
   static const double logoHeight = 512;
@@ -11,14 +12,20 @@ class SaxifyBranding {
   static const String logoAsset = 'assets/images/saxify_logo.png';
   static const String splashAsset = 'assets/images/saxify_splash.png';
   static const double splashLogoSize = 300;
-  static const String appName = 'Saxify';
-  static const String downloaderName = 'Saxify Downloader';
-  static const String downloadFolderName = 'Saxify';
-  static const String fileSuffix = '_saxify';
-  static const String author = 'Siddharth IfallertzIa';
+
+  /// The name that wins — everywhere.
+  static const String appName = 'IfallMusic';
+
+  /// Kept for compatibility with older code paths that still ask for it.
+  static const String legacyAppName = 'IfallMusic';
+
+  static const String downloaderName = 'IfallMusic Downloader';
+  static const String downloadFolderName = 'IfallMusic';
+  static const String fileSuffix = '_ifallmusic';
+  static const String author = 'Siddharth ifallertzia';
   static const String contactEmail = 'dastaanenajdik@gmail.com';
-  static const String versionLabel = '2.1.0';
+  static const String versionLabel = '2.2.0';
   static const String tagline = 'Stream beyond limits';
-  static const String userAgent = 'Saxify/2.1 (Flutter)';
+  static const String userAgent = 'IfallMusic/2.2 (Flutter)';
   static const String packageName = 'com.saxify.app';
 }

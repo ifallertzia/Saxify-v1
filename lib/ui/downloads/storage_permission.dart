@@ -25,8 +25,8 @@ class StoragePermission {
       builder: (BuildContext dialog) => AlertDialog(
         title: const Text('Storage Permission Needed'),
         content: const Text(
-          'To save songs to your Downloads folder, Saxify needs storage access.\n\n'
-          'If you allow, songs save to /Download/Saxify/.\n'
+          'To save songs to your Downloads folder, IfallMusic needs storage access.\n\n'
+          'If you allow, songs save to /Download/IfallMusic/.\n'
           'If you deny, you can still stream, but nothing is saved.',
         ),
         actions: <Widget>[

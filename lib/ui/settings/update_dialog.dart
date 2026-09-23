@@ -216,7 +216,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               const SizedBox(height: 10),
               Text(
                 'APK downloaded — the installer should now open. If it did not, '
-                'allow “Install unknown apps” for Saxify and try again.',
+                'allow “Install unknown apps” for IfallMusic and try again.',
                 style: TextStyle(fontSize: 12, color: accent.primary),
               ),
             ],

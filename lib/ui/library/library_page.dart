@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/artist.dart';
@@ -8,95 +7,335 @@ import '../../core/models/song.dart';
 import '../../core/services/library_service.dart';
 import '../../core/services/music_download_service.dart';
 import '../../core/services/playback_service.dart';
+import '../../core/theme/glass.dart';
 import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
 import '../../core/utils/format.dart';
 import '../artist/artist_router.dart';
 import '../settings/backup_sheet.dart';
 import '../settings/playlist_sync_sheet.dart';
+import '../shell/shell_controller.dart';
 import '../widgets/artwork.dart';
-import '../widgets/neon.dart';
+import '../widgets/media_cards.dart';
 import '../widgets/song_tile.dart';
 import 'playlist_detail_page.dart';
 
-/// Your Library — Songs, Liked Songs, Playlists, Artists and History.
-class LibraryPage extends StatelessWidget {
+/// Your Library.
+///
+/// Clicking Library no longer dumps you straight into Liked Songs: the screen
+/// opens with **big, colourful tabs in front of you** —
+/// `Liked · Playlists · Songs · Artists · Downloads · History`.
+class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
 
   @override
+  State<LibraryPage> createState() => _LibraryPageState();
+}
+
+class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(
+    length: _LibraryTabSpec.all.length,
+    vsync: this,
+    initialIndex: context.read<ShellController>().libraryTab,
+  );
+  late final ShellController _shell = context.read<ShellController>();
+  int _lastNonce = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _shell.addListener(_onShell);
+  }
+
+  void _onShell() {
+    if (!mounted) return;
+    if (_shell.libraryNonce == _lastNonce) return;
+    _lastNonce = _shell.libraryNonce;
+    final int target = _shell.libraryTab.clamp(0, _LibraryTabSpec.all.length - 1);
+    if (_tabs.index != target) _tabs.animateTo(target);
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _shell.removeListener(_onShell);
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const DefaultTabController(
-      length: 6,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              _LibraryHeader(),
-              TabBar(
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                dividerColor: SaxifyColors.border,
-                tabs: <Widget>[
-                  Tab(text: 'Liked'),
-                  Tab(text: 'Playlists'),
-                  Tab(text: 'Songs'),
-                  Tab(text: 'Artists'),
-                  Tab(text: 'Downloads'),
-                  Tab(text: 'History'),
+    final LibraryService library = context.watch<LibraryService>();
+    final MusicDownloadService downloads = context.watch<MusicDownloadService>();
+
+    return AuroraBackdrop(
+      intensity: 0.55,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _LibraryHeader(library: library),
+            _LibraryTabBar(controller: _tabs, library: library, downloads: downloads),
+            Expanded(
+              child: TabBarView(
+                controller: _tabs,
+                children: const <Widget>[
+                  _LikedTab(),
+                  _PlaylistsTab(),
+                  _SongsTab(),
+                  _ArtistsTab(),
+                  _DownloadsTab(),
+                  _HistoryTab(),
                 ],
               ),
-              Expanded(
-                child: TabBarView(
-                  children: <Widget>[
-                    _LikedTab(),
-                    _PlaylistsTab(),
-                    _SongsTab(),
-                    _ArtistsTab(),
-                    _DownloadsTab(),
-                    _HistoryTab(),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
+/// Metadata for the Library tabs — one place, so the bar, the counter badges
+/// and the deep links all agree.
+class _LibraryTabSpec {
+  const _LibraryTabSpec({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  static const List<_LibraryTabSpec> all = <_LibraryTabSpec>[
+    _LibraryTabSpec(
+      label: 'Liked',
+      icon: Icons.favorite_rounded,
+      color: Color(0xFFF43F5E),
+    ),
+    _LibraryTabSpec(
+      label: 'Playlists',
+      icon: Icons.queue_music_rounded,
+      color: Color(0xFF8B5CF6),
+    ),
+    _LibraryTabSpec(
+      label: 'Songs',
+      icon: Icons.music_note_rounded,
+      color: Color(0xFF3B82F6),
+    ),
+    _LibraryTabSpec(
+      label: 'Artists',
+      icon: Icons.mic_rounded,
+      color: Color(0xFF10B981),
+    ),
+    _LibraryTabSpec(
+      label: 'Downloads',
+      icon: Icons.download_rounded,
+      color: Color(0xFFF59E0B),
+    ),
+    _LibraryTabSpec(
+      label: 'History',
+      icon: Icons.history_rounded,
+      color: Color(0xFFEC4899),
+    ),
+  ];
+}
+
 class _LibraryHeader extends StatelessWidget {
-  const _LibraryHeader();
+  const _LibraryHeader({required this.library});
+
+  final LibraryService library;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 12, 6),
+      padding: const EdgeInsets.fromLTRB(18, 14, 12, 4),
       child: Row(
         children: <Widget>[
-          const Expanded(
-            child: Text(
-              'Your Library',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.6,
-                color: SaxifyColors.textPrimary,
-              ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  'Your Library',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: SaxifyTheme.appleFont(
+                    size: 28,
+                    weight: FontWeight.w800,
+                    letterSpacing: -1.0,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${library.likedSongs.length} liked · ${library.playlists.length} playlists · '
+                  '${library.songs.length} songs',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
+                ),
+              ],
             ),
           ),
-          IconButton.filledTonal(
+          GlassIconButton(
+            icon: Icons.backup_outlined,
+            size: 42,
             tooltip: 'Backup / import library JSON',
-            onPressed: () => showBackupSheet(
-              context,
-              context.read<LibraryService>(),
-            ),
-            icon: const Icon(Icons.backup_outlined),
+            onPressed: () => showBackupSheet(context, library),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The big colourful tab strip — scrollable, glassy, with live counters.
+class _LibraryTabBar extends StatelessWidget {
+  const _LibraryTabBar({
+    required this.controller,
+    required this.library,
+    required this.downloads,
+  });
+
+  final TabController controller;
+  final LibraryService library;
+  final MusicDownloadService downloads;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<int> counts = <int>[
+      library.likedSongs.length,
+      library.playlists.length,
+      library.songs.length,
+      library.artists.length,
+      downloads.downloaded.length,
+      library.history.length,
+    ];
+
+    return SizedBox(
+      height: 62,
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (BuildContext context, _) {
+          return ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: _LibraryTabSpec.all.length,
+            separatorBuilder: (BuildContext c, int i) => const SizedBox(width: 9),
+            itemBuilder: (BuildContext context, int i) {
+              final _LibraryTabSpec spec = _LibraryTabSpec.all[i];
+              return _TabPill(
+                spec: spec,
+                count: counts[i],
+                selected: controller.index == i,
+                onTap: () => controller.animateTo(i),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TabPill extends StatelessWidget {
+  const _TabPill({
+    required this.spec,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _LibraryTabSpec spec;
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(SaxifyTheme.radiusXl),
+            gradient: selected
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      spec.color.withValues(alpha: 0.95),
+                      spec.color.withValues(alpha: 0.55),
+                    ],
+                  )
+                : null,
+            color: selected ? null : Colors.white.withValues(alpha: 0.05),
+            border: Border.all(
+              color: selected
+                  ? Colors.white.withValues(alpha: 0.28)
+                  : Colors.white.withValues(alpha: 0.09),
+            ),
+            boxShadow: selected
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: spec.color.withValues(alpha: 0.42),
+                      blurRadius: 18,
+                      spreadRadius: -8,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                spec.icon,
+                size: 17,
+                color: selected ? Colors.white : spec.color,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                spec.label,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                  color: selected ? Colors.white : SaxifyColors.textSecondary,
+                ),
+              ),
+              if (count > 0) ...<Widget>[
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(9),
+                    color: selected
+                        ? Colors.black.withValues(alpha: 0.30)
+                        : Colors.white.withValues(alpha: 0.10),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: selected ? Colors.white : SaxifyColors.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -117,14 +356,13 @@ class _LikedTab extends StatelessWidget {
         child: EmptyState(
           icon: Icons.favorite_border_rounded,
           title: 'No liked songs yet',
-          message:
-              'Tap the heart on any track and it will live here, saved on this device.',
+          message: 'Tap the heart on any track and it will live here, saved on this device.',
         ),
       );
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(6, 12, 6, 140),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 200),
       children: <Widget>[
         _CollectionHeader(
           label: 'PLAYLIST',
@@ -157,8 +395,7 @@ class _PlaylistsTab extends StatelessWidget {
     final String? name = await showDialog<String>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text('Create playlist',
-            style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+        title: const Text('Create playlist'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -196,35 +433,36 @@ class _PlaylistsTab extends StatelessWidget {
     final SaxifyAccent accent = context.accent;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 140),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 200),
       children: <Widget>[
-        NeonCard(
+        GlassPanel(
           glow: true,
           onTap: () => _create(context, library),
           child: Row(
             children: <Widget>[
               Container(
-                width: 46,
-                height: 46,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   gradient: accent.gradient,
                 ),
-                child: const Icon(Icons.add_rounded, color: Colors.black),
+                child: Icon(Icons.add_rounded, color: accent.onAccent),
               ),
               const SizedBox(width: 14),
-              Expanded(
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     Text('Create playlist',
-                        style: GoogleFonts.spaceGrotesk(
-                            fontSize: 15, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    const Text(
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    SizedBox(height: 3),
+                    Text(
                       'Build your own universe of sound',
-                      style: TextStyle(
-                          fontSize: 12, color: SaxifyColors.textMuted),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
                     ),
                   ],
                 ),
@@ -237,84 +475,92 @@ class _PlaylistsTab extends StatelessWidget {
         Row(
           children: <Widget>[
             Expanded(
-              child: TextButton(
+              child: GlassButton(
+                label: 'Generate all',
+                compact: true,
+                filled: false,
                 onPressed: () => shareAllPlaylistCodes(context),
-                child: const Text('Generate all'),
               ),
             ),
+            const SizedBox(width: 10),
             Expanded(
-              child: TextButton(
+              child: GlassButton(
+                label: 'Import code',
+                compact: true,
+                filled: false,
                 onPressed: () => showImportCodeSheet(context),
-                child: const Text('Import code'),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
         if (library.playlists.isEmpty)
           const EmptyState(
             icon: Icons.queue_music_rounded,
             title: 'No playlists yet',
-            message:
-                'Create one above, then use “Add to playlist” from any song menu.',
+            message: 'Create one above, then use "Add to playlist" from any song menu.',
           )
         else
           for (final Playlist playlist in library.playlists)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: NeonCard(
-                padding: const EdgeInsets.all(12),
-                onTap: () => _openPlaylist(context, playlist),
-                child: Row(
-                  children: <Widget>[
-                    Artwork(
-                      url: playlist.artwork,
-                      size: 56,
-                      radius: 10,
-                      fallbackIcon: Icons.queue_music_rounded,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(playlist.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 14.5, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 3),
-                          Text(
-                            '${playlist.count} songs · ${Fmt.date(playlist.createdAt)}',
-                            style: const TextStyle(
-                                fontSize: 11.5, color: SaxifyColors.textMuted),
+            GlassPanel(
+              padding: const EdgeInsets.all(12),
+              radius: SaxifyTheme.radiusMd,
+              onTap: () => _openPlaylist(context, playlist),
+              child: Row(
+                children: <Widget>[
+                  Artwork(
+                    url: playlist.artwork,
+                    size: 58,
+                    radius: 12,
+                    fallbackIcon: Icons.queue_music_rounded,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          playlist.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${playlist.count} songs · ${Fmt.date(playlist.createdAt)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: SaxifyColors.textMuted,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.more_vert_rounded,
-                          size: 20, color: SaxifyColors.textFaint),
-                      onPressed: () => _playlistMenu(context, library, playlist),
-                    ),
-                  ],
-                ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.more_vert_rounded,
+                        size: 20, color: SaxifyColors.textFaint),
+                    onPressed: () => _playlistMenu(context, library, playlist),
+                  ),
+                ],
               ),
             ),
       ],
     );
   }
 
-  void _playlistMenu(
-      BuildContext context, LibraryService library, Playlist playlist) {
+  void _playlistMenu(BuildContext context, LibraryService library, Playlist playlist) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: SaxifyColors.surface,
-      builder: (BuildContext sheetContext) => SafeArea(
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext sheetContext) => GlassSheet(
+        title: playlist.name,
+        subtitle: '${playlist.count} songs',
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const SizedBox(height: 8),
             ListTile(
               leading: const Icon(Icons.drive_file_rename_outline_rounded),
               title: const Text('Rename'),
@@ -330,8 +576,7 @@ class _PlaylistsTab extends StatelessWidget {
                       controller: controller,
                       autofocus: true,
                       decoration: const InputDecoration(hintText: 'New name'),
-                      onSubmitted: (String v) =>
-                          Navigator.of(dialogContext).pop(v),
+                      onSubmitted: (String v) => Navigator.of(dialogContext).pop(v),
                     ),
                     actions: <Widget>[
                       TextButton(
@@ -339,8 +584,7 @@ class _PlaylistsTab extends StatelessWidget {
                         child: const Text('Cancel'),
                       ),
                       TextButton(
-                        onPressed: () =>
-                            Navigator.of(dialogContext).pop(controller.text),
+                        onPressed: () => Navigator.of(dialogContext).pop(controller.text),
                         child: const Text('Save'),
                       ),
                     ],
@@ -352,10 +596,8 @@ class _PlaylistsTab extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline_rounded,
-                  color: SaxifyColors.danger),
-              title: const Text('Delete playlist',
-                  style: TextStyle(color: SaxifyColors.danger)),
+              leading: const Icon(Icons.delete_outline_rounded, color: SaxifyColors.danger),
+              title: const Text('Delete playlist', style: TextStyle(color: SaxifyColors.danger)),
               onTap: () async {
                 Navigator.of(sheetContext).pop();
                 final bool? confirmed = await showDialog<bool>(
@@ -379,7 +621,7 @@ class _PlaylistsTab extends StatelessWidget {
                 if (confirmed == true) await library.deletePlaylist(playlist.id);
               },
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
           ],
         ),
       ),
@@ -401,33 +643,32 @@ class _SongsTab extends StatelessWidget {
       return const SingleChildScrollView(
         child: EmptyState(
           icon: Icons.library_music_outlined,
-          title: 'Nothing saved yet',
-          message:
-              'Songs you add to the library from the song menu will collect here.',
+          title: 'No saved songs yet',
+          message: 'Songs you add to the library from the song menu will collect here.',
         ),
       );
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(6, 12, 6, 140),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 200),
       children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Text('${songs.length} saved songs',
-                    style: const TextStyle(
-                        fontSize: 12.5, color: SaxifyColors.textMuted)),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                '${songs.length} saved songs',
+                style: const TextStyle(fontSize: 12.5, color: SaxifyColors.textMuted),
               ),
-              TextButton.icon(
-                onPressed: () => playback.playQueue(songs),
-                icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                label: const Text('Play all', style: TextStyle(fontSize: 12)),
-              ),
-            ],
-          ),
+            ),
+            GlassButton(
+              label: 'Play all',
+              icon: Icons.play_arrow_rounded,
+              compact: true,
+              onPressed: () => playback.playQueue(songs),
+            ),
+          ],
         ),
+        const SizedBox(height: 12),
         for (int i = 0; i < songs.length; i++)
           SongTile(
             song: songs[i],
@@ -446,6 +687,7 @@ class _ArtistsTab extends StatelessWidget {
     'Arijit Singh',
     'Shreya Ghoshal',
     'A. R. Rahman',
+    'Darshan Raval',
     'Sonu Nigam',
     'Lata Mangeshkar',
     'Kishore Kumar',
@@ -494,53 +736,69 @@ class _ArtistsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final LibraryService library = context.watch<LibraryService>();
     final List<ArtistRef> followed = library.artists;
-    final Color accent = context.accent.primary;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 140),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 200),
       children: <Widget>[
         const SectionHeader(
           title: 'Indian artists',
           subtitle: 'Hindi and regional artists · tap a name for songs',
-          padding: EdgeInsets.fromLTRB(8, 14, 8, 8),
+          padding: EdgeInsets.fromLTRB(4, 8, 4, 10),
         ),
         for (final String name in _indianArtists)
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-            leading: CircleAvatar(
-              backgroundColor: accent,
-              foregroundColor: Colors.black,
-              child: Text(
-                name.trim().substring(0, 1),
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-            trailing: const Icon(Icons.chevron_right_rounded, color: SaxifyColors.textFaint),
+          GlassListTile(
+            margin: const EdgeInsets.only(bottom: 6),
             onTap: () => openArtistByName(context, name: name),
+            leading: ArtistAvatar(name: name, size: 42, ring: false),
+            trailing: const Icon(Icons.chevron_right_rounded,
+                size: 18, color: SaxifyColors.textFaint),
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+            ),
           ),
         if (followed.isNotEmpty) ...<Widget>[
           SectionHeader(
             title: 'Followed artists',
             subtitle: '${followed.length} saved on this device',
-            padding: const EdgeInsets.fromLTRB(8, 20, 8, 8),
+            padding: const EdgeInsets.fromLTRB(4, 22, 4, 10),
           ),
           for (final ArtistRef artist in followed)
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              leading: ClipOval(
-                child: Artwork(url: artist.imageUrl, size: 48, radius: 24),
-              ),
-              title: Text(artist.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text(
-                artist.subscribers ?? 'Artist',
-                style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded, color: SaxifyColors.textFaint),
+            GlassListTile(
+              margin: const EdgeInsets.only(bottom: 6),
               onTap: () => openArtistByName(
                 context,
                 name: artist.name,
                 channelId: artist.channelId,
+              ),
+              leading: ArtistAvatar(
+                name: artist.name,
+                imageUrl: artist.imageUrl,
+                size: 44,
+                ring: false,
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded,
+                  size: 18, color: SaxifyColors.textFaint),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    artist.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    artist.subscribers ?? 'Artist',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
+                  ),
+                ],
               ),
             ),
         ],
@@ -567,51 +825,70 @@ class _DownloadsTab extends StatelessWidget {
         .where((MusicDownloadJob job) =>
             job.phase == MusicDownloadPhase.running || job.phase == MusicDownloadPhase.idle)
         .toList();
+    final SaxifyAccent accent = context.accent;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 140),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 200),
       children: <Widget>[
         const SectionHeader(
           title: 'Your Downloads',
-          subtitle: 'Saved on this phone · available offline',
-          padding: EdgeInsets.fromLTRB(8, 12, 8, 8),
+          subtitle: 'Saved on this phone · plays offline',
+          padding: EdgeInsets.fromLTRB(4, 8, 4, 10),
         ),
+        // ---- live downloads, each with its own percentage ----------------
         for (final MusicDownloadJob job in active)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: NeonCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(job.song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: job.phase == MusicDownloadPhase.running ? job.fraction : null,
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    job.phase == MusicDownloadPhase.running
-                        ? 'Downloading · ${(job.fraction * 100).round()}%'
-                        : 'Waiting in queue',
-                    style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
-                  ),
-                ],
-              ),
+          GlassPanel(
+            radius: SaxifyTheme.radiusMd,
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Artwork(url: job.song.thumbnailUrl, size: 44, radius: 10),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        job.song.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Cancel download',
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      onPressed: () => downloads.cancel(job),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                GlassProgress(
+                  fraction: job.fraction,
+                  indeterminate: job.phase == MusicDownloadPhase.idle || job.fraction <= 0,
+                  label: job.phase == MusicDownloadPhase.running
+                      ? 'Downloading ${(job.fraction * 100).round()}%'
+                      : 'Waiting in queue',
+                ),
+              ],
             ),
           ),
         if (saved.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
             child: Row(
               children: <Widget>[
                 Expanded(
-                  child: Text('${saved.length} songs saved',
-                      style: const TextStyle(fontSize: 12.5, color: SaxifyColors.textMuted)),
+                  child: Text(
+                    '${saved.length} songs saved',
+                    style: const TextStyle(fontSize: 12.5, color: SaxifyColors.textMuted),
+                  ),
                 ),
-                TextButton.icon(
+                GlassButton(
+                  label: 'Play all',
+                  icon: Icons.play_arrow_rounded,
+                  compact: true,
                   onPressed: () => playback.playOfflineQueue(songs, sources),
-                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                  label: const Text('Play all'),
                 ),
               ],
             ),
@@ -620,27 +897,48 @@ class _DownloadsTab extends StatelessWidget {
           const EmptyState(
             icon: Icons.download_outlined,
             title: 'No songs downloaded yet',
-            message: 'Tap the download icon beside any song. Your files stay on this device and play offline.',
+            message:
+                'Tap the download icon beside any song. Your files stay on this device and play offline.',
           ),
-        for (int i = 0; i < saved.length; i++)
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            leading: Artwork(url: saved[i].song.thumbnailUrl, size: 48, radius: 8),
-            title: Text(saved[i].song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text(
-              '${saved[i].song.artist} · ${(saved[i].size / (1024 * 1024)).toStringAsFixed(1)} MB',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
-            ),
+        for (final MusicDownloadJob job in saved)
+          GlassListTile(
+            margin: const EdgeInsets.only(bottom: 8),
+            onTap: job.offlinePath == null
+                ? null
+                : () => playback.playOfflineSong(job.song, job.offlinePath!),
+            leading: Artwork(url: job.song.thumbnailUrl, size: 48, radius: 12),
             trailing: IconButton(
               tooltip: 'Delete download',
-              onPressed: () => downloads.delete(saved[i], playback: playback),
+              onPressed: () => downloads.delete(job, playback: playback),
               icon: const Icon(Icons.delete_outline_rounded, color: SaxifyColors.danger),
             ),
-            onTap: saved[i].offlinePath == null
-                ? null
-                : () => playback.playOfflineSong(saved[i].song, saved[i].offlinePath!),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  job.song.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: <Widget>[
+                    Icon(Icons.offline_pin_rounded, size: 13, color: accent.primary),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        '${job.song.artist} · ${(job.size / (1024 * 1024)).toStringAsFixed(1)} MB · 100%',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11.5, color: SaxifyColors.textMuted),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
       ],
     );
@@ -666,37 +964,35 @@ class _HistoryTab extends StatelessWidget {
       );
     }
 
-    final List<Song> ordered =
-        library.history.map((HistoryEntry e) => e.song).toList();
+    final List<Song> ordered = library.history.map((HistoryEntry e) => e.song).toList();
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(6, 12, 6, 140),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 200),
       children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 8, 8),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  '${library.history.length} recently played',
-                  style: const TextStyle(
-                      fontSize: 12.5, color: SaxifyColors.textMuted),
-                ),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                '${library.history.length} recently played',
+                style: const TextStyle(fontSize: 12.5, color: SaxifyColors.textMuted),
               ),
-              TextButton.icon(
-                onPressed: () => playback.playQueue(ordered),
-                icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                label: const Text('Play all', style: TextStyle(fontSize: 12)),
-              ),
-              IconButton(
-                tooltip: 'Clear history',
-                icon: const Icon(Icons.delete_sweep_rounded,
-                    size: 20, color: SaxifyColors.textFaint),
-                onPressed: library.clearHistory,
-              ),
-            ],
-          ),
+            ),
+            GlassButton(
+              label: 'Play all',
+              icon: Icons.play_arrow_rounded,
+              compact: true,
+              onPressed: () => playback.playQueue(ordered),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Clear history',
+              icon: const Icon(Icons.delete_sweep_rounded,
+                  size: 20, color: SaxifyColors.textFaint),
+              onPressed: library.clearHistory,
+            ),
+          ],
         ),
+        const SizedBox(height: 10),
         for (int i = 0; i < library.history.length; i++)
           SongTile(
             song: library.history[i].song,
@@ -733,7 +1029,7 @@ class _CollectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final SaxifyAccent accent = context.accent;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 18),
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -741,8 +1037,8 @@ class _CollectionHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: <Widget>[
               Container(
-                width: 112,
-                height: 112,
+                width: 108,
+                height: 108,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
                   gradient: accent.gradient,
@@ -756,7 +1052,7 @@ class _CollectionHeader extends StatelessWidget {
                   ],
                 ),
                 child: coverUrl.isEmpty
-                    ? Icon(icon, size: 40, color: Colors.black87)
+                    ? Icon(icon, size: 40, color: accent.onAccent)
                     : ClipRRect(
                         borderRadius: BorderRadius.circular(SaxifyTheme.radiusMd),
                         child: Stack(
@@ -780,24 +1076,33 @@ class _CollectionHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    Text(label,
-                        style: TextStyle(
-                            fontSize: 10,
-                            letterSpacing: 1.5,
-                            fontWeight: FontWeight.w700,
-                            color: accent.primary)),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w800,
+                        color: accent.primary,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.spaceGrotesk(
-                          fontSize: 22, fontWeight: FontWeight.w700),
+                      style: SaxifyTheme.appleFont(
+                        size: 23,
+                        weight: FontWeight.w800,
+                        letterSpacing: -0.7,
+                      ),
                     ),
                     const SizedBox(height: 5),
-                    Text(subtitle,
-                        style: const TextStyle(
-                            fontSize: 12, color: SaxifyColors.textMuted)),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, color: SaxifyColors.textMuted),
+                    ),
                   ],
                 ),
               ),
@@ -806,20 +1111,21 @@ class _CollectionHeader extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: <Widget>[
-              NeonButton(
-                label: 'Play',
-                icon: Icons.play_arrow_rounded,
-                expand: true,
-                onPressed: onPlay,
+              Expanded(
+                child: GlassButton(
+                  label: 'Play',
+                  icon: Icons.play_arrow_rounded,
+                  onPressed: onPlay,
+                ),
               ),
               const SizedBox(width: 10),
-              IconButton(
-                onPressed: onShuffle,
-                icon: const Icon(Icons.shuffle_rounded),
-                style: IconButton.styleFrom(
-                  backgroundColor: SaxifyColors.surfaceAlt,
-                  foregroundColor: SaxifyColors.textPrimary,
-                  minimumSize: const Size(48, 48),
+              SizedBox(
+                width: 54,
+                height: 54,
+                child: GlassIconButton(
+                  icon: Icons.shuffle_rounded,
+                  size: 54,
+                  onPressed: onShuffle,
                 ),
               ),
             ],

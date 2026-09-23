@@ -1,19 +1,23 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/services/native_bridge.dart';
 import '../../core/services/playback_service.dart';
+import '../../core/theme/glass.dart';
+import '../../core/theme/saxify_accents.dart';
 import '../../core/theme/saxify_theme.dart';
 import '../widgets/neon.dart';
 import '../widgets/search_fab.dart';
+import 'sound_panel.dart';
 
-/// System equalizer bound to the player that is already running.
+/// Equalizer + the 8D spatial audio templates.
 ///
-/// Frequencies come from Android `Equalizer.getCenterFreq` (millihertz),
-/// which is the API on the device — not the invalid getCenterFrecuencias helper.
+/// The band section is bound to the running player session (Android
+/// `Equalizer.getCenterFreq`, in millihertz — the device API, not the invalid
+/// `getCenterFrecuencias` helper). The spatial section is the real-time
+/// orbit processor from `spatial_audio_service.dart` / `SpatialAudioProcessor.kt`.
 class EqualizerPage extends StatefulWidget {
   const EqualizerPage({super.key});
 
@@ -138,22 +142,48 @@ class _EqualizerPageState extends State<EqualizerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Equalizer'),
-        actions: const <Widget>[SaxifySearchButton()],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _unsupported
-              ? const EmptyState(
-                  icon: Icons.graphic_eq_rounded,
-                  title: 'Equalizer unavailable',
-                  message:
-                      'This device does not expose an audio session equalizer. Playback is unchanged.',
-                )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 140),
+    return AuroraBackdrop(
+      intensity: 0.5,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Equalizer & 8D audio'),
+          actions: const <Widget>[SaxifySearchButton()],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 180),
+          children: <Widget>[
+            // ------------------------------------------------ 8D templates
+            GlassPanel(
+              glow: true,
+              padding: EdgeInsets.zero,
+              child: const SpatialControls(),
+            ),
+            const SizedBox(height: 18),
+
+            // ------------------------------------------------ bands
+            const SectionHeader(
+              title: 'Studio equalizer',
+              subtitle: 'Bound to the live player session',
+              padding: EdgeInsets.fromLTRB(4, 6, 4, 10),
+            ),
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_unsupported)
+              const EmptyState(
+                icon: Icons.graphic_eq_rounded,
+                title: 'Equalizer unavailable',
+                message:
+                    'This device does not expose an audio session equalizer. Playback and 8D audio are unchanged.',
+              )
+            else ...<Widget>[
+              GlassPanel(
+                radius: SaxifyTheme.radiusMd,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -168,10 +198,12 @@ class _EqualizerPageState extends State<EqualizerPage> {
                         setState(() => _enabled = v);
                       },
                     ),
-                    const SizedBox(height: 8),
-                    Text('Presets',
-                        style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Presets',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    ),
+                    const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -187,28 +219,34 @@ class _EqualizerPageState extends State<EqualizerPage> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 18),
-                    for (int i = 0; i < (_info?.bands ?? 0); i++)
-                      _BandSlider(
-                        index: i,
-                        centerHz: (_info!.centersMilliHz.length > i
-                                ? _info!.centersMilliHz[i]
-                                : 0) /
-                            1000,
-                        min: _info!.minLevel,
-                        max: _info!.maxLevel,
-                        value: _levels.length > i ? _levels[i] : 0,
-                        enabled: _enabled,
-                        onChanged: (int level) async {
-                          setState(() {
-                            _preset = null;
-                            if (_levels.length > i) _levels[i] = level;
-                          });
-                          await NativeBridge.eqSetBand(i, level);
-                        },
-                      ),
+                    const SizedBox(height: 8),
                   ],
                 ),
+              ),
+              const SizedBox(height: 12),
+              for (int i = 0; i < (_info?.bands ?? 0); i++)
+                _BandSlider(
+                  index: i,
+                  centerHz: (_info!.centersMilliHz.length > i
+                          ? _info!.centersMilliHz[i]
+                          : 0) /
+                      1000,
+                  min: _info!.minLevel,
+                  max: _info!.maxLevel,
+                  value: _levels.length > i ? _levels[i] : 0,
+                  enabled: _enabled,
+                  onChanged: (int level) async {
+                    setState(() {
+                      _preset = null;
+                      if (_levels.length > i) _levels[i] = level;
+                    });
+                    await NativeBridge.eqSetBand(i, level);
+                  },
+                ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -240,17 +278,41 @@ class _BandSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(_label, style: const TextStyle(fontSize: 12, color: SaxifyColors.textSecondary)),
-        Slider(
-          min: min.toDouble(),
-          max: max.toDouble(),
-          value: value.clamp(min, max).toDouble(),
-          onChanged: enabled ? (double v) => onChanged(v.round()) : null,
-        ),
-      ],
+    final SaxifyAccent accent = context.accent;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  _label,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: SaxifyColors.textSecondary,
+                  ),
+                ),
+              ),
+              Text(
+                '${value > 0 ? '+' : ''}${(value / 100).toStringAsFixed(1)} dB',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: accent.primary,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            min: min.toDouble(),
+            max: max.toDouble(),
+            value: value.clamp(min, max).toDouble(),
+            onChanged: enabled ? (double v) => onChanged(v.round()) : null,
+          ),
+        ],
+      ),
     );
   }
 }

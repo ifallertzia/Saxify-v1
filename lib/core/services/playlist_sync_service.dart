@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../../config/backend_config.dart';
+import '../../config/branding.dart';
 import '../models/playlist.dart';
 import '../models/song.dart';
 
@@ -27,7 +28,7 @@ class PlaylistSyncService {
             body: jsonEncode(<String, Object?>{
               'title': title,
               'songs': songs,
-              'app': 'Saxify',
+              'app': IfallBranding.appName,
             }),
           )
           .timeout(const Duration(seconds: 20));
@@ -41,7 +42,7 @@ class PlaylistSyncService {
   static Future<String?> shareAllPlaylists(
     List<Map<String, dynamic>> allPlaylists, {
     bool copyToClipboard = true,
-    String title = 'Saxify library',
+    String title = 'IfallMusic library',
   }) async {
     try {
       final http.Response res = await http
@@ -51,7 +52,7 @@ class PlaylistSyncService {
             body: jsonEncode(<String, Object?>{
               'title': title,
               'playlists': allPlaylists,
-              'app': 'Saxify',
+              'app': IfallBranding.appName,
             }),
           )
           .timeout(const Duration(seconds: 20));
@@ -149,5 +150,5 @@ class PlaylistSyncService {
     return text;
   }
 
-  static void _log(String message) => debugPrint('[Saxify][Sync] $message');
+  static void _log(String message) => debugPrint('[IfallMusic][Sync] $message');
 }

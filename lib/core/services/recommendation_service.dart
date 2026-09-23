@@ -123,7 +123,7 @@ class RecommendationService extends ChangeNotifier {
       }
       await _store.saveCache(jsonEncode(forYou.map((Song s) => s.toJson()).toList()));
     } catch (e) {
-      debugPrint('[Saxify][Reco] refresh failed: $e');
+      debugPrint('[IfallMusic][Reco] refresh failed: $e');
     } finally {
       loading = false;
       notifyListeners();
@@ -136,7 +136,7 @@ class RecommendationService extends ChangeNotifier {
           .searchSongs(query, limit: 8)
           .timeout(const Duration(seconds: 12));
     } catch (e) {
-      debugPrint('[Saxify][Reco] search "$query" failed: $e');
+      debugPrint('[IfallMusic][Reco] search "$query" failed: $e');
       return <Song>[];
     }
   }
